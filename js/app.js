@@ -1,160 +1,127 @@
-document.addEventListener('DOMContentLoaded', async () => {
-    const savedKey = localStorage.getItem('mhd_activation_key');
-    
-    if (savedKey) {
-        const isValid = await verifyActivationKey(savedKey);
-        if (isValid) {
-            showTrackerView();
-        } else {
-            localStorage.removeItem('mhd_activation_key');
-            showAuthView();
-        }
-    } else {
-        showAuthView();
-    }
+let currentUser = JSON.parse(localStorage.getItem('mhd_user')) || null;
+let simulatedRole = null;
+
+document.addEventListener("DOMContentLoaded", () => {
+    checkInitialState();
 });
 
-function showAuthView() {
-    document.getElementById('auth-section').classList.remove('hidden');
-    document.getElementById('tracker-section').classList.add('hidden');
-    document.getElementById('status-bar').textContent = 'Nicht aktiviert';
+function checkInitialState() {
+    if (!currentUser) {
+        document.getElementById('viewSetup').classList.remove('hidden');
+        document.getElementById('statusBadge').innerText = "Status: Nicht aktiviert";
+    } else {
+        document.getElementById('viewLogin').classList.remove('hidden');
+        document.getElementById('statusBadge').innerText = `Gekoppelt als: ${currentUser.name} (${currentUser.rolle})`;
+    }
 }
 
-function showTrackerView() {
-    document.getElementById('auth-section').classList.add('hidden');
-    document.getElementById('tracker-section').classList.remove('hidden');
-    document.getElementById('status-bar').textContent = 'Aktiviert & Verbunden';
-    loadMhdList();
-}
+// 1. ERSTANMELDUNG MIT KEY
+async function registerDevice() {
+    const keyCode = document.getElementById('setupKey').value.trim();
+    const name = document.getElementById('setupName').value.trim();
+    const kassennummer = document.getElementById('setupKasse').value.trim();
+    const kassenpin = document.getElementById('setupPin').value.trim();
 
-const authForm = document.getElementById('auth-form');
-if (authForm) {
-    authForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const keyInput = document.getElementById('activation-key-input').value.trim();
-        
-        if (!keyInput) return;
-
-        const isValid = await verifyActivationKey(keyInput);
-        if (isValid) {
-            localStorage.setItem('mhd_activation_key', keyInput);
-            showTrackerView();
-        } else {
-            alert('Ungültiger oder inaktiver Aktivierungsschlüssel!');
-        }
-    });
-}
-
-const mhdForm = document.getElementById('mhd-form');
-if (mhdForm) {
-    mhdForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const barcode = document.getElementById('article-barcode').value.trim();
-        const name = document.getElementById('article-name').value.trim();
-        const mhdDate = document.getElementById('article-mhd').value;
-        const activationKey = localStorage.getItem('mhd_activation_key');
-
-        if (!barcode || !name || !mhdDate) {
-            alert('Bitte alle Felder ausfüllen.');
-            return;
-        }
-
-        const success = await saveMhdItem(activationKey, barcode, name, mhdDate);
-        
-        if (success) {
-            alert('Artikel erfolgreich gespeichert!');
-            mhdForm.reset();
-            loadMhdList();
-        } else {
-            alert('Fehler beim Speichern des Artikels.');
-        }
-    });
-}
-
-async function loadMhdList() {
-    const mhdList = document.getElementById('mhd-list');
-    mhdList.innerHTML = '<p>Lade Artikel...</p>';
-
-    const activationKey = localStorage.getItem('mhd_activation_key');
-    const items = await fetchMhdItems(activationKey);
-
-    if (!items || items.length === 0) {
-        mhdList.innerHTML = '<p>Keine aktiven MHD-Einträge vorhanden.</p>';
+    if (!keyCode || !name || !kassennummer || !kassenpin) {
+        alert("Bitte alle Felder ausfüllen!");
         return;
     }
 
-    mhdList.innerHTML = '';
-    
-    items.forEach(item => {
-        const itemEl = document.createElement('div');
-        itemEl.className = `mhd-item ${getUrgencyClass(item.mhd_date)}`;
-        itemEl.innerHTML = `
-            <strong>${item.article_name}</strong><br>
-            Barcode: ${item.barcode}<br>
-            MHD: <strong>${item.mhd_date}</strong>
-        `;
-        mhdList.appendChild(itemEl);
-    });
+    const { data: keyData, error: keyError } = await supabase
+        .from('keys')
+        .select('*')
+        .eq('key_code', keyCode)
+        .eq('is_active', true)
+        .single();
+
+    if (keyError || !keyData) {
+        alert("Ungültiger oder bereits inaktiver Aktivierungsschlüssel!");
+        return;
+    }
+
+    const { data: userData, error: userError } = await supabase
+        .from('nutzer')
+        .insert([{
+            bezirk_id: keyData.bezirk_id,
+            filiale_id: keyData.filiale_id,
+            name: name,
+            kassennummer: kassennummer,
+            kassenpin: kassenpin,
+            rolle: keyData.rolle
+        }])
+        .select()
+        .single();
+
+    if (userError) {
+        alert("Fehler bei der Registrierung: " + userError.message);
+        return;
+    }
+
+    currentUser = userData;
+    localStorage.setItem('mhd_user', JSON.stringify(currentUser));
+
+    alert("Erfolgreich aktiviert!");
+    location.reload();
 }
 
-function getUrgencyClass(mhdDateStr) {
-    const today = new Date();
-    const mhdDate = new Date(mhdDateStr);
-    const diffTime = mhdDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+// 2. SCHNELL-LOGIN MIT PIN
+function loginWithPin() {
+    const kassennummer = document.getElementById('loginKasse').value.trim();
+    const kassenpin = document.getElementById('loginPin').value.trim();
 
-    if (diffDays <= 1) return 'mhd-critical';
-    if (diffDays <= 4) return 'mhd-warning';
-    return 'mhd-ok';
-}
-
-let html5QrCode = null;
-const scanBtn = document.getElementById('scan-btn');
-const readerDiv = document.getElementById('reader');
-
-if (scanBtn) {
-    scanBtn.addEventListener('click', async () => {
-        if (readerDiv.classList.contains('hidden')) {
-            readerDiv.classList.remove('hidden');
-            scanBtn.textContent = 'Kamera schließen';
-            
-            if (!html5QrCode) {
-                html5QrCode = new Html5Qrcode("reader");
-            }
-            
-            try {
-                await html5QrCode.start(
-                    { facingMode: "environment" },
-                    {
-                        fps: 10,
-                        qrbox: { width: 250, height: 100 }
-                    },
-                    (decodedText) => {
-                        document.getElementById('article-barcode').value = decodedText;
-                        stopScanner();
-                    },
-                    (errorMessage) => {}
-                );
-            } catch (err) {
-                console.error("Kamera konnte nicht gestartet werden:", err);
-                alert("Kamera-Zugriff verwehrt oder nicht unterstützt.");
-                stopScanner();
-            }
-        } else {
-            stopScanner();
-        }
-    });
-}
-
-function stopScanner() {
-    if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => {
-            readerDiv.classList.add('hidden');
-            scanBtn.textContent = '📷 Scannen';
-        }).catch(err => console.error("Fehler beim Stoppen des Scanners:", err));
+    if (kassennummer === currentUser.kassennummer && kassenpin === currentUser.kassenpin) {
+        loadDashboard(currentUser.rolle);
     } else {
-        readerDiv.classList.add('hidden');
-        scanBtn.textContent = '📷 Scannen';
+        alert("Falsche Kassennummer oder PIN!");
+    }
+}
+
+// 3. DASHBOARD LADEN JE NACH ROLLE
+function loadDashboard(role) {
+    document.getElementById('viewLogin').classList.add('hidden');
+    document.getElementById('viewSetup').classList.add('hidden');
+    document.getElementById('viewDashboard').classList.remove('hidden');
+
+    if (currentUser.rolle === 'admin' || simulatedRole) {
+        document.getElementById('adminSimulatorBar').classList.remove('hidden');
+    }
+
+    const activeRole = simulatedRole || role;
+    const titleEl = document.getElementById('dashTitle');
+    const contentEl = document.getElementById('dashContent');
+
+    if (activeRole === 'admin') {
+        titleEl.innerText = "👑 Super-Admin Dashboard";
+        contentEl.innerHTML = `<p>Hier hast du die Gesamtübersicht über alle Bezirke, Filialen und kannst neue Haupt-Keys generieren.</p>`;
+    } else if (activeRole === 'bezirksleiter') {
+        titleEl.innerText = "🏢 Bezirksleitungs-Dashboard";
+        contentEl.innerHTML = `<p>Übersicht aller Filialen im Bezirk. Teamleiter-Keys verwalten.</p>`;
+    } else if (activeRole === 'teamleiter') {
+        titleEl.innerText = "🏪 Teamleiter-Dashboard (Filiale)";
+        contentEl.innerHTML = `<p>Deine Filial-Übersicht. Hier siehst du den Mitarbeiter-Key und die gescannten Artikel deines Teams.</p>`;
+    } else if (activeRole === 'mitarbeiter') {
+        titleEl.innerText = "📱 Mitarbeiter Scan-Maske";
+        contentEl.innerHTML = `<p>Hier scannst du Artikel und siehst deine tägliche MHD-Liste.</p>
+                               <input type="text" placeholder="Barcode scannen / eingeben">
+                               <button>Artikel speichern</button>`;
+    }
+}
+
+function switchView(role) {
+    simulatedRole = role;
+    loadDashboard(role);
+}
+
+function logoutDevice() {
+    document.getElementById('viewDashboard').classList.add('hidden');
+    document.getElementById('viewLogin').classList.remove('hidden');
+    simulatedRole = null;
+    document.getElementById('adminSimulatorBar').classList.add('hidden');
+}
+
+function resetDevice() {
+    if (confirm("Möchtest du dieses Gerät wirklich komplett zurücksetzen?")) {
+        localStorage.removeItem('mhd_user');
+        location.reload();
     }
 }

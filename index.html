@@ -3,71 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MHD-Tracker</title>
-    <!-- Verknüpfung zur CSS-Datei -->
+    <title>MHD-Tracker - Rollen-System</title>
+    <!-- Stylesheet -->
     <link rel="stylesheet" href="css/style.css">
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#007bff">
-    <!-- html5-qrcode Bibliothek für den Kamera-Scanner -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-    <div class="container">
-        <div id="status-bar" class="status-bar">Nicht verbunden</div>
-        <h1>MHD-Tracker</h1>
-
-        <!-- Aktivierungs-Bereich -->
-        <section id="auth-section">
-            <h3>Filiale / Aktivierung</h3>
-            <p>Bitte geben Sie Ihren Aktivierungsschlüssel ein, um fortzufahren.</p>
-            <form id="auth-form">
-                <input type="text" id="activation-key-input" placeholder="Aktivierungsschlüssel (z.B. kik-filiale-01)" required>
-                <button type="submit">Aktivieren</button>
-            </form>
-        </section>
-
-        <!-- Hauptbereich (nach Freischaltung) -->
-        <section id="tracker-section" class="hidden">
-            <div class="actions">
-                <h3>Neuen Artikel erfassen</h3>
-                <form id="mhd-form">
-                    <div class="scanner-row">
-                        <input type="text" id="article-barcode" placeholder="Barcode scannen / eingeben" required>
-                        <button type="button" id="scan-btn">📷 Scannen</button>
-                    </div>
-                    
-                    <!-- Kamera-Vorschaubild -->
-                    <div id="reader" class="hidden"></div>
-
-                    <input type="text" id="article-name" placeholder="Artikelbezeichnung (z.B. Frischmilch)" required>
-                    <input type="date" id="article-mhd" required>
-                    <button type="submit">Artikel speichern</button>
-                </form>
-            </div>
-
-            <h2>Fällige Artikel (MHD)</h2>
-            <div id="mhd-list">
-                <!-- Hier werden die Artikel dynamisch aus Supabase geladen -->
-            </div>
-        </section>
+<div class="container">
+    <!-- SUPER-ADMIN ANSICHTSWECHSLER -->
+    <div id="adminSimulatorBar" class="admin-bar hidden">
+        <span>👑 Admin-Simulator:</span>
+        <div>
+            <button onclick="switchView('admin')" id-btn="admin">Admin</button>
+            <button onclick="switchView('bezirksleiter')" id-btn="bezirksleiter">Bezirksleitung</button>
+            <button onclick="switchView('teamleiter')" id-btn="teamleiter">Teamleiter</button>
+            <button onclick="switchView('mitarbeiter')" id-btn="mitarbeiter">Mitarbeiter</button>
+        </div>
     </div>
 
-    <!-- Skripte -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabase.js"></script>
-    <script src="js/app.js"></script>
+    <h1>MHD-Tracker</h1>
+    <div id="statusBadge" style="font-size: 14px; color: #666; margin-bottom: 15px;">Nicht angemeldet</div>
 
-    <!-- Service Worker Registrierung -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker registriert:', reg.scope))
-                    .catch(err => console.log('Service Worker Fehler:', err));
-            });
-        }
-    </script>
+    <!-- ANSICHT 1: ERSTANMELDUNG (KEY EINGEBEN) -->
+    <div id="viewSetup" class="hidden">
+        <h2>Gerät / App aktivieren</h2>
+        <p>Bitte gib deinen Aktivierungsschlüssel ein:</p>
+        <input type="text" id="setupKey" placeholder="z.B. TEST-KEY-TEAMLEITER">
+        <input type="text" id="setupName" placeholder="Dein Name (z.B. Anna Steck)">
+        <input type="text" id="setupKasse" placeholder="Kassennummer (z.B. 101)">
+        <input type="password" id="setupPin" placeholder="4-stellige Kassen-PIN" maxlength="4">
+        <button onclick="registerDevice()">Aktivieren & Starten</button>
+    </div>
+
+    <!-- ANSICHT 2: SCHNELL-LOGIN (KASSENNUMMER + PIN) -->
+    <div id="viewLogin" class="hidden">
+        <h2>Schicht-Login</h2>
+        <p>Schnell-Anmeldung für dieses Gerät:</p>
+        <input type="text" id="loginKasse" placeholder="Kassennummer">
+        <input type="password" id="loginPin" placeholder="Kassen-PIN" maxlength="4">
+        <button onclick="loginWithPin()">Einloggen</button>
+        <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="resetDevice()" style="color: #dc3545; font-size: 12px;">Gerät zurücksetzen / Neu aktivieren</a></p>
+    </div>
+
+    <!-- ANSICHT 3: DASHBOARDS JE NACH ROLLE -->
+    <div id="viewDashboard" class="hidden">
+        <h2 id="dashTitle">Dashboard</h2>
+        <div id="dashContent" class="card">
+            <!-- Dynamischer Inhalt -->
+        </div>
+        <button onclick="logoutDevice()" style="background: #dc3545; margin-top: 20px;">Abmelden</button>
+    </div>
+</div>
+
+<!-- Skripte -->
+<script src="js/supabase.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
