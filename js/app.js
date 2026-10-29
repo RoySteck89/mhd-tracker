@@ -1,5 +1,6 @@
 let currentUser = JSON.parse(localStorage.getItem('mhd_user')) || null;
 let simulatedRole = null;
+let pendingKeyData = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     checkInitialState();
@@ -7,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function checkInitialState() {
     if (!currentUser) {
-        document.getElementById('viewSetup').classList.remove('hidden');
+        document.getElementById('viewSetupKey').classList.remove('hidden');
         document.getElementById('statusBadge').innerText = "Status: Nicht aktiviert";
     } else {
         document.getElementById('viewLogin').classList.remove('hidden');
@@ -15,39 +16,73 @@ function checkInitialState() {
     }
 }
 
-// 1. ERSTANMELDUNG MIT KEY
-async function registerDevice() {
+// SCHRITT 1: KEY IN DATENBANK PRÜFEN
+async function verifyKeyStep1() {
     const keyCode = document.getElementById('setupKey').value.trim();
-    const name = document.getElementById('setupName').value.trim();
-    const kassennummer = document.getElementById('setupKasse').value.trim();
-    const kassenpin = document.getElementById('setupPin').value.trim();
-
-    if (!keyCode || !name || !kassennummer || !kassenpin) {
-        alert("Bitte alle Felder ausfüllen!");
+    if (!keyCode) {
+        alert("Bitte gib einen Aktivierungsschlüssel ein!");
         return;
     }
 
-    const { data: keyData, error: keyError } = await supabase
+    const { data: keyData, error } = await supabase
         .from('keys')
         .select('*')
         .eq('key_code', keyCode)
         .eq('is_active', true)
         .single();
 
-    if (keyError || !keyData) {
+    if (error || !keyData) {
         alert("Ungültiger oder bereits inaktiver Aktivierungsschlüssel!");
+        return;
+    }
+
+    pendingKeyData = keyData;
+    document.getElementById('viewSetupKey').classList.add('hidden');
+    document.getElementById('viewSetupDetails').classList.remove('hidden');
+
+    const infoText = document.getElementById('roleInfoText');
+    const extraContainer = document.getElementById('extraFieldContainer');
+    const extraInput = document.getElementById('setupExtraName');
+
+    if (keyData.rolle === 'admin') {
+        infoText.innerText = "✓ Erkannt: Super-Admin-Key";
+        extraContainer.classList.add('hidden');
+    } else if (keyData.rolle === 'bezirksleiter') {
+        infoText.innerText = "✓ Erkannt: Bezirksleitung-Key";
+        extraContainer.classList.remove('hidden');
+        extraInput.placeholder = "Name des Bezirks (z.B. Allgäu)";
+    } else if (keyData.rolle === 'teamleiter') {
+        infoText.innerText = "✓ Erkannt: Teamleiter-Key";
+        extraContainer.classList.remove('hidden');
+        extraInput.placeholder = "Name der Filiale (z.B. Filiale Dietmannsried)";
+    } else if (keyData.rolle === 'mitarbeiter') {
+        infoText.innerText = "✓ Erkannt: Mitarbeiter-Key";
+        extraContainer.classList.add('hidden');
+    }
+}
+
+// SCHRITT 2: NUTZER ANLEGEN UND GERÄT KOPPELN
+async function registerDeviceStep2() {
+    const name = document.getElementById('setupName').value.trim();
+    const kassennummer = document.getElementById('setupKasse').value.trim();
+    const kassenpin = document.getElementById('setupPin').value.trim();
+    const extraValue = document.getElementById('setupExtraName').value.trim();
+
+    if (!name || !kassennummer || !kassenpin || 
+        ((pendingKeyData.rolle === 'bezirksleiter' || pendingKeyData.rolle === 'teamleiter') && !extraValue)) {
+        alert("Bitte fülle alle erforderlichen Felder aus!");
         return;
     }
 
     const { data: userData, error: userError } = await supabase
         .from('nutzer')
         .insert([{
-            bezirk_id: keyData.bezirk_id,
-            filiale_id: keyData.filiale_id,
+            bezirk_id: pendingKeyData.bezirk_id,
+            filiale_id: pendingKeyData.filiale_id,
             name: name,
             kassennummer: kassennummer,
             kassenpin: kassenpin,
-            rolle: keyData.rolle
+            rolle: pendingKeyData.rolle
         }])
         .select()
         .single();
@@ -60,11 +95,11 @@ async function registerDevice() {
     currentUser = userData;
     localStorage.setItem('mhd_user', JSON.stringify(currentUser));
 
-    alert("Erfolgreich aktiviert!");
+    alert("Gerät erfolgreich aktiviert und verknüpft!");
     location.reload();
 }
 
-// 2. SCHNELL-LOGIN MIT PIN
+// SCHNELL-LOGIN MIT PIN
 function loginWithPin() {
     const kassennummer = document.getElementById('loginKasse').value.trim();
     const kassenpin = document.getElementById('loginPin').value.trim();
@@ -76,10 +111,11 @@ function loginWithPin() {
     }
 }
 
-// 3. DASHBOARD LADEN JE NACH ROLLE
+// DASHBOARD LADEN JE NACH ROLLE
 function loadDashboard(role) {
     document.getElementById('viewLogin').classList.add('hidden');
-    document.getElementById('viewSetup').classList.add('hidden');
+    document.getElementById('viewSetupKey').classList.add('hidden');
+    document.getElementById('viewSetupDetails').classList.add('hidden');
     document.getElementById('viewDashboard').classList.remove('hidden');
 
     if (currentUser.rolle === 'admin' || simulatedRole) {
@@ -92,16 +128,16 @@ function loadDashboard(role) {
 
     if (activeRole === 'admin') {
         titleEl.innerText = "👑 Super-Admin Dashboard";
-        contentEl.innerHTML = `<p>Hier hast du die Gesamtübersicht über alle Bezirke, Filialen und kannst neue Haupt-Keys generieren.</p>`;
+        contentEl.innerHTML = `<p>Gesamtübersicht über alle Bezirke und Haupt-Keys.</p>`;
     } else if (activeRole === 'bezirksleiter') {
         titleEl.innerText = "🏢 Bezirksleitungs-Dashboard";
-        contentEl.innerHTML = `<p>Übersicht aller Filialen im Bezirk. Teamleiter-Keys verwalten.</p>`;
+        contentEl.innerHTML = `<p>Übersicht aller Filialen im Bezirk und Teamleiter-Keys.</p>`;
     } else if (activeRole === 'teamleiter') {
         titleEl.innerText = "🏪 Teamleiter-Dashboard (Filiale)";
-        contentEl.innerHTML = `<p>Deine Filial-Übersicht. Hier siehst du den Mitarbeiter-Key und die gescannten Artikel deines Teams.</p>`;
+        contentEl.innerHTML = `<p>Filial-Übersicht, Mitarbeiter-Keys verwalten und MHD-Kontrolle.</p>`;
     } else if (activeRole === 'mitarbeiter') {
         titleEl.innerText = "📱 Mitarbeiter Scan-Maske";
-        contentEl.innerHTML = `<p>Hier scannst du Artikel und siehst deine tägliche MHD-Liste.</p>
+        contentEl.innerHTML = `<p>Artikel scannen und fällige MHD-Artikel prüfen.</p>
                                <input type="text" placeholder="Barcode scannen / eingeben">
                                <button>Artikel speichern</button>`;
     }
@@ -120,7 +156,7 @@ function logoutDevice() {
 }
 
 function resetDevice() {
-    if (confirm("Möchtest du dieses Gerät wirklich komplett zurücksetzen?")) {
+    if (confirm("Möchtest du dieses Gerät wirklich zurücksetzen?")) {
         localStorage.removeItem('mhd_user');
         location.reload();
     }

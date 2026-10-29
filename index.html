@@ -26,15 +26,28 @@
     <h1>MHD-Tracker</h1>
     <div id="statusBadge" style="font-size: 14px; color: #666; margin-bottom: 15px;">Nicht angemeldet</div>
 
-    <!-- ANSICHT 1: ERSTANMELDUNG (KEY EINGEBEN) -->
-    <div id="viewSetup" class="hidden">
-        <h2>Gerät / App aktivieren</h2>
-        <p>Bitte gib deinen Aktivierungsschlüssel ein:</p>
+    <!-- ANSICHT 1: SCHRITT 1 - KEY PRÜFEN -->
+    <div id="viewSetupKey" class="hidden">
+        <h2>Gerät aktivieren</h2>
+        <p>Schritt 1 von 2: Aktivierungsschlüssel eingeben</p>
         <input type="text" id="setupKey" placeholder="z.B. TEST-KEY-TEAMLEITER">
-        <input type="text" id="setupName" placeholder="Dein Name (z.B. Olaf Mustermann)">
+        <button onclick="verifyKeyStep1()">Key prüfen</button>
+    </div>
+
+    <!-- ANSICHT 1: SCHRITT 2 - ROLLE SPEZIFISCHE DATEN -->
+    <div id="viewSetupDetails" class="hidden">
+        <h2>Gerät aktivieren</h2>
+        <p id="roleInfoText" style="color: #28a745; font-weight: bold; margin-bottom: 15px;"></p>
+        
+        <!-- Dynamisches Extra-Feld (z.B. für Filial- oder Bezirksname) -->
+        <div id="extraFieldContainer" class="hidden">
+            <input type="text" id="setupExtraName" placeholder="">
+        </div>
+
+        <input type="text" id="setupName" placeholder="Dein Name (z.B. Anna Steck)">
         <input type="text" id="setupKasse" placeholder="Kassennummer (z.B. 101)">
         <input type="password" id="setupPin" placeholder="4-stellige Kassen-PIN" maxlength="4">
-        <button onclick="registerDevice()">Aktivieren & Starten</button>
+        <button onclick="registerDeviceStep2()">Aktivieren & Starten</button>
     </div>
 
     <!-- ANSICHT 2: SCHNELL-LOGIN (KASSENNUMMER + PIN) -->
