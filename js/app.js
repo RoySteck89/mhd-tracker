@@ -213,8 +213,8 @@ async function loadDashboard(role) {
             </div>
 
             <div class="card">
-                <h3>🏪 Filialen & Bezirks-Zuordnung</h3>
-                <div id="filialAssignmentList">Lade Filialen...</div>
+                <h3>🏪 Filialübersicht & Leiter-Verwaltung</h3>
+                <div id="filialAssignmentList">Lade Filialen und Leiter...</div>
             </div>
 
             <div class="card">
@@ -367,21 +367,27 @@ async function createBezirk() {
     }
 }
 
-// ADMIN: FILIALEN UND BEREICHS-ZUORDNUNGEN ANZEIGEN & ÄNDERN
+// ADMIN: FILIALEN, FILIALLEITER UND BEZIRKS-ZUORDNUNGEN ANZEIGEN & ÄNDERN
 async function renderFilialAssignments() {
     const listEl = document.getElementById('filialAssignmentList');
     if (!listEl) return;
 
+    // Lade Filialen, Bezirke und Teamleiter aus Supabase
     const { data: filialen } = await _supabase.from('filialen').select('*');
     const { data: bezirke } = await _supabase.from('bezirke').select('*');
+    const { data: teamleiterList } = await _supabase.from('nutzer').select('*').eq('rolle', 'teamleiter');
 
     if (!filialen || filialen.length === 0) {
-        listEl.innerHTML = "<p style='font-size: 13px; color: #666;'>Noch keine Filialen registriert.</p>";
+        listEl.innerHTML = "<p style='font-size: 13px; color: #666;'>Noch keine Filialen in der Datenbank vorhanden.</p>";
         return;
     }
 
-    let html = "<div style='display: flex; flex-direction: column; gap: 10px;'>";
+    let html = "<div style='display: flex; flex-direction: column; gap: 12px;'>";
     filialen.forEach(f => {
+        // Finde den passenden Teamleiter für diese Filiale
+        const teamleiter = teamleiterList ? teamleiterList.find(t => t.filiale_id === f.id) : null;
+        const leiterName = teamleiter ? `${teamleiter.name} (Kasse: ${teamleiter.kassennummer})` : "<i>Noch kein Leiter registriert</i>";
+
         let options = `<option value="">-- Kein Bezirk zugewiesen --</option>`;
         if (bezirke) {
             bezirke.forEach(b => {
@@ -391,11 +397,12 @@ async function renderFilialAssignments() {
         }
 
         html += `
-            <div style="background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
-                <strong>🏪 ${f.name}</strong>
+            <div style="background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-size: 16px; font-weight: bold; color: #2c3e50; margin-bottom: 4px;">🏪 Filiale: ${f.name}</div>
+                <div style="font-size: 13px; color: #495057; margin-bottom: 8px;">👤 <strong>Filialleiter:</strong> ${leiterName}</div>
                 <div style="margin-top: 5px;">
-                    <label style="font-size: 12px; color: #555;">Bezirk zuweisen:</label>
-                    <select onchange="updateFilialeBezirk(${f.id}, this.value)" style="margin: 3px 0; padding: 6px;">
+                    <label style="font-size: 12px; color: #666; font-weight: bold;">Bezirk zuweisen:</label>
+                    <select onchange="updateFilialeBezirk(${f.id}, this.value)" style="margin-top: 4px; padding: 8px; font-size: 14px;">
                         ${options}
                     </select>
                 </div>
@@ -417,6 +424,7 @@ async function updateFilialeBezirk(filialeId, bezirkId) {
         alert("Fehler beim Aktualisieren: " + error.message);
     } else {
         alert("Zuordnung erfolgreich aktualisiert!");
+        renderFilialAssignments();
     }
 }
 
