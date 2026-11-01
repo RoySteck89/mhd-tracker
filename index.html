@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MHD-Tracker 1.0.0</title>
+    <title>MHD-Tracker</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#00f5d4">
-    <!-- Html5-Qrcode Scanner CDN -->
+    
+    <!-- WICHTIG: Hier wird die Scanner-Bibliothek direkt geladen -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body class="theme-glitter">
@@ -35,15 +36,13 @@
             <button onclick="verifyAndActivateKey()">Key überprüfen</button>
         </div>
 
-        <!-- VIEW 2: DASHBOARD (ADMIN, BL, TL, MA) -->
+        <!-- VIEW 2: DASHBOARD -->
         <div id="viewDashboard" class="hidden">
-            <div id="dashContent">
-                <!-- Dynamischer Inhalt je nach Rolle -->
-            </div>
+            <div id="dashContent"></div>
         </div>
     </div>
 
-    <!-- Supabase SDK -->
+    <!-- Supabase SDK & App Logik -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
     <script src="js/app.js"></script>
