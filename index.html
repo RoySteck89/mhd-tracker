@@ -26,7 +26,7 @@
     </div>
 
     <h1>MHD-Tracker</h1>
-    <div id="statusBadge" style="font-size: 14px; color: #666; margin-bottom: 15px;">Nicht angemeldet</div>
+    <div id="statusBadge">Nicht angemeldet</div>
 
     <!-- ANSICHT 1: SCHRITT 1 - KEY PRÜFEN -->
     <div id="viewSetupKey" class="hidden">
@@ -39,7 +39,7 @@
     <!-- ANSICHT 1: SCHRITT 2 - ROLLE SPEZIFISCHE DATEN -->
     <div id="viewSetupDetails" class="hidden">
         <h2>Gerät aktivieren</h2>
-        <p id="roleInfoText" style="color: #28a745; font-weight: bold; margin-bottom: 15px;"></p>
+        <p id="roleInfoText" style="color: var(--primary-color); font-weight: bold; margin-bottom: 15px;"></p>
         
         <div id="extraFieldContainer" class="hidden">
             <input type="text" id="setupExtraName" placeholder="">
@@ -58,7 +58,7 @@
         <input type="text" id="loginKasse" placeholder="Kassennummer">
         <input type="password" id="loginPin" placeholder="Kassen-PIN" maxlength="4">
         <button onclick="loginWithPin()">Einloggen</button>
-        <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="resetDevice()" style="color: #dc3545; font-size: 12px;">Gerät zurücksetzen / Neu aktivieren</a></p>
+        <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="resetDevice()" style="color: #dc3545; font-size: 12px; text-decoration: none;">Gerät zurücksetzen / Neu aktivieren</a></p>
     </div>
 
     <!-- ANSICHT 3: DASHBOARDS -->
@@ -67,7 +67,27 @@
         <div id="dashContent">
             <!-- Dynamischer Inhalt -->
         </div>
-        <button onclick="logoutDevice()" style="background: #dc3545; margin-top: 20px;">Abmelden</button>
+        <button onclick="logoutDevice()" style="background-color: #dc3545; margin-top: 20px;">Abmelden</button>
+    </div>
+
+    <!-- EINSTELLUNGEN (DESIGN & SCHRIFT-SCHIEBER) - JETZT UNTEN -->
+    <div id="userPreferencesCard" class="card" style="margin-top: 30px; border-left-color: var(--border-color);">
+        <h3>⚙️ Persönliche Einstellungen (für diesen Nutzer)</h3>
+        
+        <div style="margin-top: 10px;">
+            <label for="themeSelect">🎨 Design-Auswahl:</label>
+            <select id="themeSelect" onchange="changeTheme(this.value)">
+                <option value="kik">KiK Classic (Rot)</option>
+                <option value="dark">Modern Dark (Dunkel)</option>
+                <option value="clean">Clean Light (Hell)</option>
+                <option value="contrast">High Contrast (Kontrast)</option>
+            </select>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <label for="fontSizeRange">🔤 Schriftgröße anpassen: <span id="fontSizeVal">16px</span></label>
+            <input type="range" id="fontSizeRange" min="12" max="24" value="16" step="1" oninput="changeFontSize(this.value)" style="width: 100%; cursor: pointer; accent-color: var(--primary-color);">
+        </div>
     </div>
 </div>
 

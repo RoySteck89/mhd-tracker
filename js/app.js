@@ -20,14 +20,56 @@ try {
     currentUser = null;
 }
 
+// BENUTZERSPEZIFISCHE EINSTELLUNGEN BEIM START LADEN
 document.addEventListener("DOMContentLoaded", () => {
     try {
+        applyUserPreferences();
         checkInitialState();
     } catch (err) {
         console.error("Fehler beim Starten der App:", err);
         alert("Ein Startfehler ist aufgetreten: " + err.message);
     }
 });
+
+// Lädt Design und Schriftgröße exakt für den aktuell eingeloggten Nutzer
+function applyUserPreferences() {
+    const userId = currentUser ? currentUser.id : 'guest';
+    const savedTheme = localStorage.getItem(`mhd_theme_${userId}`) || 'kik';
+    const savedFontSize = localStorage.getItem(`mhd_fontsize_${userId}`) || '16';
+
+    changeTheme(savedTheme, false);
+    changeFontSize(savedFontSize, false);
+
+    const themeSelect = document.getElementById('themeSelect');
+    if (themeSelect) themeSelect.value = savedTheme;
+
+    const fontRange = document.getElementById('fontSizeRange');
+    const fontVal = document.getElementById('fontSizeVal');
+    if (fontRange) fontRange.value = savedFontSize;
+    if (fontVal) fontVal.innerText = `${savedFontSize}px`;
+}
+
+function changeTheme(themeName, save = true) {
+    document.body.className = document.body.className.replace(/theme-\S+/g, '');
+    document.body.classList.add(`theme-${themeName}`);
+    
+    if (save) {
+        const userId = currentUser ? currentUser.id : 'guest';
+        localStorage.setItem(`mhd_theme_${userId}`, themeName);
+    }
+}
+
+function changeFontSize(sizePx, save = true) {
+    document.documentElement.style.setProperty('--base-font-size', `${sizePx}px`);
+    
+    const fontVal = document.getElementById('fontSizeVal');
+    if (fontVal) fontVal.innerText = `${sizePx}px`;
+
+    if (save) {
+        const userId = currentUser ? currentUser.id : 'guest';
+        localStorage.setItem(`mhd_fontsize_${userId}`, sizePx);
+    }
+}
 
 function checkInitialState() {
     hideAllViews();
@@ -167,6 +209,7 @@ function loginWithPin() {
 
     if (currentUser && kassennummer === currentUser.kassennummer && kassenpin === currentUser.kassenpin) {
         localStorage.setItem('mhd_logged_in', 'true');
+        applyUserPreferences(); // Lädt die spezifischen Präferenzen des Nutzers
         loadDashboard(currentUser.rolle);
     } else {
         alert("Falsche Kassennummer oder PIN!");
@@ -208,7 +251,7 @@ async function loadDashboard(role) {
                 <h3>🏢 Neuer Bezirk anlegen</h3>
                 <div style="display: flex; gap: 8px;">
                     <input type="text" id="newBezirkName" placeholder="Bezirk Name (z.B. Allgäu)" style="margin: 0; flex: 1;">
-                    <button onclick="createBezirk()" style="width: auto; margin: 0; background: #28a745;">Erstellen</button>
+                    <button onclick="createBezirk()" style="width: auto; margin: 0;">Erstellen</button>
                 </div>
             </div>
 
@@ -246,14 +289,14 @@ async function loadDashboard(role) {
     } else if (currentSessionRole === 'teamleiter') {
         titleEl.innerText = "🏪 Teamleiter-Ansicht (Filiale & Scanner)";
         contentEl.innerHTML = `
-            <div class="card" style="background: #e2e8f0; margin-bottom: 15px;">
+            <div class="card" style="margin-bottom: 15px;">
                 <h3>Mitarbeiter-Key für deine Filiale erstellen</h3>
-                <p style="font-size: 13px; color: #555;">Dieser Key dient allen Mitarbeitern deiner Filiale zur Geräteaktivierung.</p>
+                <p style="font-size: calc(var(--base-font-size) * 0.9); opacity: 0.8;">Dieser Key dient allen Mitarbeitern deiner Filiale zur Geräteaktivierung.</p>
                 <div style="display: flex; gap: 8px; margin: 8px 0;">
                     <input type="text" id="employeeKeyCode" placeholder="Generiere Key..." style="margin: 0; flex: 1;">
                     <button type="button" onclick="createEmployeeKeyInput()" style="width: auto; margin: 0; background: #6c757d;">🎲 Neu laden</button>
                 </div>
-                <button onclick="generateEmployeeKey()" style="margin-top: 5px; background: #28a745;">Diesen Filial-Key freigeben</button>
+                <button onclick="generateEmployeeKey()" style="margin-top: 5px;">Diesen Filial-Key freigeben</button>
             </div>
 
             <div class="card">
@@ -275,7 +318,7 @@ async function loadDashboard(role) {
                     <input type="date" id="articleMhd">
                 </div>
 
-                <button onclick="saveMhdItem()" style="margin-top: 15px; background: #28a745;">Artikel speichern</button>
+                <button onclick="saveMhdItem()" style="margin-top: 15px;">Artikel speichern</button>
             </div>
         `;
         setTimeout(() => {
@@ -305,7 +348,7 @@ async function loadDashboard(role) {
                     <input type="date" id="articleMhd">
                 </div>
 
-                <button onclick="saveMhdItem()" style="margin-top: 15px; background: #28a745;">Artikel speichern</button>
+                <button onclick="saveMhdItem()" style="margin-top: 15px;">Artikel speichern</button>
             </div>
         `;
         setTimeout(() => {
@@ -372,19 +415,17 @@ async function renderFilialAssignments() {
     const listEl = document.getElementById('filialAssignmentList');
     if (!listEl) return;
 
-    // Lade Filialen, Bezirke und Teamleiter aus Supabase
     const { data: filialen } = await _supabase.from('filialen').select('*');
     const { data: bezirke } = await _supabase.from('bezirke').select('*');
     const { data: teamleiterList } = await _supabase.from('nutzer').select('*').eq('rolle', 'teamleiter');
 
     if (!filialen || filialen.length === 0) {
-        listEl.innerHTML = "<p style='font-size: 13px; color: #666;'>Noch keine Filialen in der Datenbank vorhanden.</p>";
+        listEl.innerHTML = "<p style='font-size: 13px; opacity: 0.7;'>Noch keine Filialen in der Datenbank vorhanden.</p>";
         return;
     }
 
     let html = "<div style='display: flex; flex-direction: column; gap: 12px;'>";
     filialen.forEach(f => {
-        // Finde den passenden Teamleiter für diese Filiale
         const teamleiter = teamleiterList ? teamleiterList.find(t => t.filiale_id === f.id) : null;
         const leiterName = teamleiter ? `${teamleiter.name} (Kasse: ${teamleiter.kassennummer})` : "<i>Noch kein Leiter registriert</i>";
 
@@ -397,12 +438,12 @@ async function renderFilialAssignments() {
         }
 
         html += `
-            <div style="background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                <div style="font-size: 16px; font-weight: bold; color: #2c3e50; margin-bottom: 4px;">🏪 Filiale: ${f.name}</div>
-                <div style="font-size: 13px; color: #495057; margin-bottom: 8px;">👤 <strong>Filialleiter:</strong> ${leiterName}</div>
+            <div style="background: var(--container-bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: calc(var(--base-font-size) * 1.05); font-weight: bold; margin-bottom: 4px;">🏪 Filiale: ${f.name}</div>
+                <div style="font-size: calc(var(--base-font-size) * 0.9); margin-bottom: 8px;">👤 <strong>Filialleiter:</strong> ${leiterName}</div>
                 <div style="margin-top: 5px;">
-                    <label style="font-size: 12px; color: #666; font-weight: bold;">Bezirk zuweisen:</label>
-                    <select onchange="updateFilialeBezirk(${f.id}, this.value)" style="margin-top: 4px; padding: 8px; font-size: 14px;">
+                    <label style="font-size: calc(var(--base-font-size) * 0.85); font-weight: bold;">Bezirk zuweisen:</label>
+                    <select onchange="updateFilialeBezirk(${f.id}, this.value)" style="margin-top: 4px; padding: 6px;">
                         ${options}
                     </select>
                 </div>
@@ -554,7 +595,7 @@ async function renderKeyList() {
 
     let html = "<ul style='padding-left: 20px; margin: 0;'>";
     keys.forEach(k => {
-        html += `<li style="margin-bottom: 6px;"><strong>${k.key_code}</strong> <span style="color: #666; font-size: 13px;">(${k.rolle})</span> – Status: ${k.is_active ? '✅ Aktiv' : '❌ Inaktiv'}</li>`;
+        html += `<li style="margin-bottom: 6px;"><strong>${k.key_code}</strong> <span style="opacity: 0.7; font-size: 13px;">(${k.rolle})</span> – Status: ${k.is_active ? '✅ Aktiv' : '❌ Inaktiv'}</li>`;
     });
     html += "</ul>";
     listEl.innerHTML = html;
