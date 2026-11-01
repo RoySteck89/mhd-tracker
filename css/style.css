@@ -63,6 +63,22 @@ body.theme-contrast {
     --input-bg: #ffffff;
 }
 
+/* DESIGN 5: GLITZER-DESIGN (Edel, Schimmer & Rose-Gold) */
+body.theme-glitter {
+    --bg-color: #1a141a;
+    --container-bg: #271e25;
+    --text-color: #fdf2f8;
+    --primary-color: #ec4899;
+    --primary-hover: #db2777;
+    --border-color: #583348;
+    --card-bg: #30242e;
+    --card-border: #6d3a5a;
+    --admin-bg: #120d12;
+    --badge-bg: #4a283e;
+    --badge-text: #fbcfe8;
+    --input-bg: #30242e;
+}
+
 /* ALLGEMEINES STYLING & RESETS */
 * {
     box-sizing: border-box;
@@ -219,7 +235,7 @@ button:hover {
     }
 }
 
-/* ADMIN BAR (WICHTIG: Flex-Anordnung für Buttons korrigiert) */
+/* ADMIN BAR */
 .admin-bar {
     background: var(--admin-bg);
     color: #ffffff;
@@ -239,7 +255,7 @@ button:hover {
 }
 
 .admin-bar button {
-    width: auto !important; /* Erzwingt, dass die Buttons nicht 100% Breit sind */
+    width: auto !important;
     flex: 1;
     min-width: 90px;
     padding: 8px 12px;

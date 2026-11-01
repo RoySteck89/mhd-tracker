@@ -20,42 +20,15 @@ try {
     currentUser = null;
 }
 
-// BENUTZERSPEZIFISCHE EINSTELLUNGEN BEIM START LADEN
-document.addEventListener("DOMContentLoaded", () => {
-    try {
-        applyUserPreferences();
-        checkInitialState();
-    } catch (err) {
-        console.error("Fehler beim Starten der App:", err);
-        alert("Ein Startfehler ist aufgetreten: " + err.message);
-    }
-});
-
-// Lädt Design und Schriftgröße exakt für den aktuell eingeloggten Nutzer
-function applyUserPreferences() {
-    const userId = currentUser ? currentUser.id : 'guest';
-    const savedTheme = localStorage.getItem(`mhd_theme_${userId}`) || 'kik';
-    const savedFontSize = localStorage.getItem(`mhd_fontsize_${userId}`) || '16';
-
-    changeTheme(savedTheme, false);
-    changeFontSize(savedFontSize, false);
-
-    const themeSelect = document.getElementById('themeSelect');
-    if (themeSelect) themeSelect.value = savedTheme;
-
-    const fontRange = document.getElementById('fontSizeRange');
-    const fontVal = document.getElementById('fontSizeVal');
-    if (fontRange) fontRange.value = savedFontSize;
-    if (fontVal) fontVal.innerText = `${savedFontSize}px`;
-}
-
+// DESIGN & SCHRIFTGRÖSSE SOFORT ANWENDEN UND SPEICHERN
 function changeTheme(themeName, save = true) {
-    document.body.className = document.body.className.replace(/theme-\S+/g, '');
+    document.body.className = document.body.className.replace(/theme-\S+/g, '').trim();
     document.body.classList.add(`theme-${themeName}`);
     
     if (save) {
         const userId = currentUser ? currentUser.id : 'guest';
         localStorage.setItem(`mhd_theme_${userId}`, themeName);
+        localStorage.setItem('mhd_theme', themeName);
     }
 }
 
@@ -70,6 +43,31 @@ function changeFontSize(sizePx, save = true) {
         localStorage.setItem(`mhd_fontsize_${userId}`, sizePx);
     }
 }
+
+// BENUTZERSPEZIFISCHE EINSTELLUNGEN BEIM START LADEN
+document.addEventListener("DOMContentLoaded", () => {
+    try {
+        const userId = currentUser ? currentUser.id : 'guest';
+        const savedTheme = localStorage.getItem(`mhd_theme_${userId}`) || localStorage.getItem('mhd_theme') || 'kik';
+        const savedFontSize = localStorage.getItem(`mhd_fontsize_${userId}`) || '16';
+
+        changeTheme(savedTheme, false);
+        changeFontSize(savedFontSize, false);
+
+        const themeSelect = document.getElementById('themeSelect');
+        if (themeSelect) themeSelect.value = savedTheme;
+
+        const fontRange = document.getElementById('fontSizeRange');
+        const fontVal = document.getElementById('fontSizeVal');
+        if (fontRange) fontRange.value = savedFontSize;
+        if (fontVal) fontVal.innerText = `${savedFontSize}px`;
+
+        checkInitialState();
+    } catch (err) {
+        console.error("Fehler beim Starten der App:", err);
+        alert("Ein Startfehler ist aufgetreten: " + err.message);
+    }
+});
 
 function checkInitialState() {
     hideAllViews();
@@ -209,7 +207,7 @@ function loginWithPin() {
 
     if (currentUser && kassennummer === currentUser.kassennummer && kassenpin === currentUser.kassenpin) {
         localStorage.setItem('mhd_logged_in', 'true');
-        applyUserPreferences(); // Lädt die spezifischen Präferenzen des Nutzers
+        applyUserPreferences();
         loadDashboard(currentUser.rolle);
     } else {
         alert("Falsche Kassennummer oder PIN!");
