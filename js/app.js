@@ -1,175 +1,241 @@
-document.addEventListener('DOMContentLoaded', async () => {
-    const savedKey = localStorage.getItem('mhd_activation_key');
-    
-    if (savedKey) {
-        const isValid = await verifyActivationKey(savedKey);
-        if (isValid) {
-            showTrackerView();
-        } else {
-            localStorage.removeItem('mhd_activation_key');
-            showAuthView();
-        }
-    } else {
-        showAuthView();
-    }
+let currentSessionRole = localStorage.getItem('mhd_active_role') || 'mitarbeiter';
+let currentKey = localStorage.getItem('mhd_activation_key') || null;
+let html5QrCode = null;
+
+document.addEventListener("DOMContentLoaded", () => {
+    checkInitialState();
 });
 
-function showAuthView() {
-    const authSec = document.getElementById('auth-section');
-    const trackSec = document.getElementById('tracker-section');
-    const status = document.getElementById('status-bar');
-    
-    if (authSec) authSec.classList.remove('hidden');
-    if (trackSec) trackSec.classList.add('hidden');
-    if (status) status.textContent = 'Nicht aktiviert';
+function checkInitialState() {
+    if (!currentKey) {
+        showView('viewSetupKey');
+        set逆にStatus("Status: Nicht aktiviert");
+    } else {
+        loadDashboard(currentSessionRole);
+    }
 }
 
-function showTrackerView() {
-    const authSec = document.getElementById('auth-section');
-    const trackSec = document.getElementById('tracker-section');
-    const status = document.getElementById('status-bar');
-
-    if (authSec) authSec.classList.add('hidden');
-    if (trackSec) trackSec.classList.remove('hidden');
-    if (status) status.textContent = 'Aktiviert & Verbunden';
-    loadMhdList();
-}
-
-const authForm = document.getElementById('auth-form');
-if (authForm) {
-    authForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const keyInput = document.getElementById('activation-key-input').value.trim();
-        
-        if (!keyInput) return;
-
-        const isValid = await verifyActivationKey(keyInput);
-        if (isValid) {
-            localStorage.setItem('mhd_activation_key', keyInput);
-            showTrackerView();
-        } else {
-            alert('Ungültiger oder inaktiver Aktivierungsschlüssel!');
-        }
+function showView(viewId) {
+    ['viewSetupKey', 'viewDashboard'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
     });
+    const target = document.getElementById(viewId);
+    if (target) target.classList.remove('hidden');
 }
 
-const mhdForm = document.getElementById('mhd-form');
-if (mhdForm) {
-    mhdForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const barcode = document.getElementById('article-barcode').value.trim();
-        const name = document.getElementById('article-name').value.trim();
-        const mhdDate = document.getElementById('article-mhd').value;
-        const activationKey = localStorage.getItem('mhd_activation_key');
-
-        if (!barcode || !name || !mhdDate) {
-            alert('Bitte alle Felder ausfüllen.');
-            return;
-        }
-
-        const success = await saveMhdItem(activationKey, barcode, name, mhdDate);
-        
-        if (success) {
-            alert('Artikel erfolgreich gespeichert!');
-            mhdForm.reset();
-            loadMhdList();
-        } else {
-            alert('Fehler beim Speichern des Artikels.');
-        }
-    });
+function set逆にStatus(text) {
+    const badge = document.getElementById('statusBadge');
+    if (badge) badge.innerText = text;
 }
 
-async function loadMhdList() {
-    const mhdList = document.getElementById('mhd-list');
-    if (!mhdList) return;
-    
-    mhdList.innerHTML = '<p>Lade Artikel...</p>';
+// Key-Prüfung über Supabase + Master-Key Support
+async function verifyAndActivateKey() {
+    const keyInput = document.getElementById('activationKeyInput');
+    if (!keyInput) return;
+    const key = keyInput.value.trim();
 
-    const activationKey = localStorage.getItem('mhd_activation_key');
-    const items = await fetchMhdItems(activationKey);
-
-    if (!items || items.length === 0) {
-        mhdList.innerHTML = '<p style="opacity: 0.7;">Keine aktiven MHD-Einträge vorhanden.</p>';
+    if (!key) {
+        alert("Bitte einen Key eingeben!");
         return;
     }
 
-    mhdList.innerHTML = '';
-    
-    items.forEach(item => {
-        const itemEl = document.createElement('div');
-        itemEl.className = `mhd-item ${getUrgencyClass(item.mhd_date)}`;
-        itemEl.style.cssText = "background: rgba(255,255,255,0.05); padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 5px solid var(--primary-color);";
-        itemEl.innerHTML = `
-            <strong>${item.article_name}</strong><br>
-            <small>Barcode: ${item.barcode} | MHD: <strong>${item.mhd_date}</strong></small>
-        `;
-        mhdList.appendChild(itemEl);
-    });
-}
+    // 1. Master Key Check
+    if (key.toUpperCase() === 'ADMIN-MASTER-KEY') {
+        localStorage.setItem('mhd_activation_key', key);
+        localStorage.setItem('mhd_active_role', 'admin');
+        currentKey = key;
+        currentSessionRole = 'admin';
+        loadDashboard('admin');
+        return;
+    }
 
-function getUrgencyClass(mhdDateStr) {
-    const today = new Date();
-    const mhdDate = new Date(mhdDateStr);
-    const diffTime = mhdDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays <= 1) return 'mhd-critical';
-    if (diffDays <= 4) return 'mhd-warning';
-    return 'mhd-ok';
-}
-
-let html5QrCode = null;
-const scanBtn = document.getElementById('scan-btn');
-const readerDiv = document.getElementById('reader');
-
-if (scanBtn) {
-    scanBtn.addEventListener('click', async () => {
-        if (readerDiv.classList.contains('hidden')) {
-            readerDiv.classList.remove('hidden');
-            scanBtn.textContent = 'Kamera schließen';
-            
-            if (!html5QrCode) {
-                html5QrCode = new Html5Qrcode("reader");
-            }
-            
-            try {
-                await html5QrCode.start(
-                    { facingMode: "environment" },
-                    {
-                        fps: 10,
-                        qrbox: { width: 250, height: 100 }
-                    },
-                    (decodedText) => {
-                        document.getElementById('article-barcode').value = decodedText;
-                        stopScanner();
-                    },
-                    (errorMessage) => {}
-                );
-            } catch (err) {
-                console.error("Kamera konnte nicht gestartet werden:", err);
-                alert("Kamera-Zugriff verwehrt oder nicht unterstützt.");
-                stopScanner();
-            }
-        } else {
-            stopScanner();
-        }
-    });
-}
-
-function stopScanner() {
-    if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => {
-            readerDiv.classList.add('hidden');
-            if (scanBtn) scanBtn.textContent = '📷 Scannen';
-        }).catch(err => console.error("Fehler beim Stoppen des Scanners:", err));
+    // 2. Supabase Datenbank Check
+    const dbData = await checkActivationKeyInDb(key);
+    if (dbData) {
+        localStorage.setItem('mhd_activation_key', key);
+        const role = dbData.rolle || 'mitarbeiter';
+        localStorage.setItem('mhd_active_role', role);
+        currentKey = key;
+        currentSessionRole = role;
+        loadDashboard(role);
     } else {
-        if (readerDiv) readerDiv.classList.add('hidden');
-        if (scanBtn) scanBtn.textContent = '📷 Scannen';
+        alert("Ungültiger oder inaktiver Aktivierungs-Key!");
     }
 }
 
+function setSimulatedRole(role) {
+    currentSessionRole = role;
+    localStorage.setItem('mhd_active_role', role);
+
+    const buttons = document.querySelectorAll('.admin-bar button');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    if (event && event.target) event.target.classList.add('active');
+
+    loadDashboard(role);
+}
+
+function loadDashboard(role) {
+    showView('viewDashboard');
+    set逆にStatus(`Angemeldet als Rolle: ${role.toUpperCase()}`);
+
+    // Admin-Simulator-Leiste nur für Admins anzeigen
+    const adminBar = document.getElementById('adminBar');
+    if (adminBar) {
+        if (currentKey === 'ADMIN-MASTER-KEY' || role === 'admin') {
+            adminBar.style.display = 'flex';
+        } else {
+            adminBar.style.display = 'none';
+        }
+    }
+
+    const dashContent = document.getElementById('dashContent');
+    if (!dashContent) return;
+
+    let mainContentHtml = '';
+
+    if (role === 'admin') {
+        mainContentHtml = `
+            <h2>👑 Super-Admin Steuerung</h2>
+            <div class="admin-grid-layout">
+                <div class="card">
+                    <h3>🏙️ Neuer Bezirk anlegen</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="newBezirkInput" placeholder="Bezirk Name (z.B. Allgäu)">
+                        <button style="width: auto; margin-top: 0;" onclick="alert('Bezirk angelegt!')">Erstellen</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🏪 Filialübersicht & Leiter-Verwaltung</h3>
+                    <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                        <strong>🏪 Filiale: Dietmannsried</strong><br>
+                        <small>👤 Filialleiter: Michaela Steck</small>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🔑 Aktivierungs-Key generieren</h3>
+                    <select id="keyRoleSelect" style="margin-bottom: 8px;">
+                        <option value="teamleiter">Teamleiter Key</option>
+                        <option value="bezirksleitung">Bezirksleiter Key</option>
+                        <option value="admin">Admin Key</option>
+                    </select>
+                    <input type="text" id="genKeyDisplay" value="MHD-HUWY-KVMK" readonly>
+                    <button style="margin-top: 12px;" onclick="alert('Key generiert!')">In Datenbank speichern</button>
+                </div>
+            </div>
+        `;
+    } else if (role === 'bezirksleitung') {
+        mainContentHtml = `
+            <h2>🏢 Bezirksleitung Dashboard</h2>
+            <div class="card">
+                <h3>Übersicht Bezirk Allgäu</h3>
+                <p style="margin-bottom: 12px;">Alle zugeordneten Filialen im Blick.</p>
+                <div style="background: rgba(255,255,255,0.05); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    <strong>📍 Filiale: Dietmannsried</strong><br>
+                    <small>Filialleitung: Michaela Steck | Status: Alles im grünen Bereich</small>
+                </div>
+            </div>
+        `;
+    } else {
+        let title = "📱 Mitarbeiter Scan-Ansicht";
+        let teamleiterExtra = '';
+
+        if (role === 'teamleiter') {
+            title = "🏪 Teamleiter-Ansicht (Filiale & Scanner)";
+            teamleiterExtra = `
+                <div class="card">
+                    <h3>Mitarbeiter-Key für deine Filiale</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="tlKeyDisplay" value="MHD-Filiale-4473" readonly>
+                    </div>
+                    <button style="margin-top: 12px;" onclick="toggleMhdList()" style="background-color: #0ea5e9;">📂 Gescannte MHD-Liste öffnen / schließen</button>
+                    <div id="teamleiterMhdList" class="hidden" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 10px;">
+                        <!-- Liste -->
+                    </div>
+                </div>
+            `;
+        }
+
+        mainContentHtml = `
+            <h2>${title}</h2>
+            ${teamleiterExtra}
+            <div class="card">
+                <h3>Barcode Scanner & Artikelerfassung</h3>
+                <div id="reader"></div>
+                
+                <label for="barcodeInput">Barcode:</label>
+                <input type="text" id="barcodeInput" placeholder="Barcode scannen oder eingeben...">
+                
+                <label for="artName">Artikelbezeichnung:</label>
+                <input type="text" id="artName" placeholder="z.B. Milch 1L">
+
+                <label for="mhdDate">Mindesthaltbarkeitsdatum (MHD):</label>
+                <input type="date" id="mhdDate">
+
+                <button style="margin-top: 16px;" onclick="saveMhdItemHandler()">Artikel speichern</button>
+            </div>
+        `;
+    }
+
+    const logoutHtml = `
+        <div class="card" style="margin-top: 16px;">
+            <button onclick="logoutApp()" style="background-color: #64748b;">Abmelden / Key wechseln</button>
+        </div>
+    `;
+
+    dashContent.innerHTML = mainContentHtml + logoutHtml;
+
+    if (role !== 'admin' && role !== 'bezirksleitung') {
+        initScanner();
+    }
+}
+
+async function saveMhdItemHandler() {
+    const code = document.getElementById('barcodeInput').value.trim();
+    const name = document.getElementById('artName').value.trim();
+    const date = document.getElementById('mhdDate').value;
+
+    if (!code || !name || !date) {
+        alert("Bitte alle Felder ausfüllen!");
+        return;
+    }
+
+    const success = await saveMhdItem(currentKey, code, name, date);
+    if (success) {
+        alert("Erfolgreich in Supabase gespeichert!");
+        document.getElementById('barcodeInput').value = '';
+        document.getElementById('artName').value = '';
+        document.getElementById('mhdDate').value = '';
+    } else {
+        alert("Fehler beim Speichern zur Datenbank.");
+    }
+}
+
+function initScanner() {
+    setTimeout(() => {
+        const readerEl = document.getElementById('reader');
+        if (readerEl && typeof Html5QrCode !== 'undefined') {
+            try {
+                if (!html5QrCode) html5QrCode = new Html5QrCode("reader");
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 150 } },
+                    (decodedText) => {
+                        const barcodeInput = document.getElementById('barcodeInput');
+                        if (barcodeInput) barcodeInput.value = decodedText;
+                    },
+                    () => {}
+                ).catch(() => {});
+            } catch (e) {}
+        }
+    }, 300);
+}
+
 function logoutApp() {
+    if (html5QrCode) { try { html5QrCode.stop(); } catch(e){} }
     localStorage.removeItem('mhd_activation_key');
+    localStorage.removeItem('mhd_active_role');
     location.reload();
 }
