@@ -12,10 +12,8 @@ function checkInitialState() {
         document.getElementById('viewSetupKey').classList.remove('hidden');
         document.getElementById('statusBadge').innerText = "Status: Nicht aktiviert";
     } else {
-        // Prüfen, ob das Gerät bereits eingeloggt war oder ob der Login-Screen gezeigt werden soll
         const isLoggedIn = localStorage.getItem('mhd_logged_in') === 'true';
         if (isLoggedIn && currentSessionRole) {
-            // Direkt im Dashboard bleiben beim Neuladen!
             loadDashboard(currentSessionRole);
         } else {
             document.getElementById('viewLogin').classList.remove('hidden');
@@ -123,7 +121,6 @@ function loginWithPin() {
     const kassenpin = document.getElementById('loginPin').value.trim();
 
     if (currentUser && kassennummer === currentUser.kassennummer && kassenpin === currentUser.kassenpin) {
-        // Dauerhaft eingeloggt speichern
         localStorage.setItem('mhd_logged_in', 'true');
         loadDashboard(currentUser.rolle);
     } else {
@@ -135,7 +132,6 @@ function loginWithPin() {
 async function loadDashboard(role) {
     await stopScanner();
 
-    // Aktivierte Rolle in Session speichern gegen Logout bei Neuladen
     currentSessionRole = simulatedRole || role;
     localStorage.setItem('mhd_active_role', currentSessionRole);
     localStorage.setItem('mhd_logged_in', 'true');
@@ -518,7 +514,6 @@ async function switchView(role) {
 
 function logoutDevice() {
     stopScanner();
-    // Kompletter Logout, löscht auch den Session-Status
     localStorage.removeItem('mhd_logged_in');
     localStorage.removeItem('mhd_active_role');
     document.getElementById('viewDashboard').classList.add('hidden');
