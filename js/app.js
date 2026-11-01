@@ -123,7 +123,7 @@ function loadDashboard(role) {
                     <h3>🔑 Aktivierungs-Key generieren</h3>
                     <select id="keyRoleSelect" style="margin-bottom: 8px;">
                         <option value="teamleiter">Teamleiter Key</option>
-                        <option value="bezirksleitung">Bezirksleiter Key</option>
+                        <option value="bezirksleitung">Bezirksleitung Key</option>
                         <option value="admin">Admin Key</option>
                     </select>
                     <input type="text" id="genKeyDisplay" value="MHD-HUWY-KVMK" readonly>
@@ -165,6 +165,7 @@ function loadDashboard(role) {
             <div class="card">
                 <h3>Barcode Scanner & Artikelerfassung</h3>
                 
+                <!-- Sichtbares Sucherfenster mit fester Mindesthöhe -->
                 <div id="reader" style="width: 100%; min-height: 250px; background: #000; border: 2px solid #00f5d4; border-radius: 8px; margin-bottom: 15px; position: relative;"></div>
                 
                 <label for="barcodeInput">Barcode:</label>
@@ -199,7 +200,10 @@ function startAutoScanner() {
     if (!readerEl) return;
 
     const ScannerClass = window.Html5QrCode;
-    if (!ScannerClass) return;
+    if (!ScannerClass) {
+        console.error("Lokale Scanner-Bibliothek nicht gefunden!");
+        return;
+    }
 
     try {
         if (!html5QrCode) {
