@@ -1,6 +1,6 @@
 let currentSessionRole = localStorage.getItem('mhd_active_role') || 'mitarbeiter';
 let currentKey = localStorage.getItem('mhd_activation_key') || null;
-let html5QrCode = null;
+let isScanning = false;
 
 document.addEventListener("DOMContentLoaded", () => {
     checkInitialState();
@@ -157,9 +157,10 @@ function loadDashboard(role) {
             <div class="card">
                 <h3>Barcode Scanner & Artikelerfassung</h3>
                 
-                <!-- Exakter Reader-Container für den Scanner -->
-                <div id="reader" style="width: 100%; margin-bottom: 10px;"></div>
-                <button type="button" onclick="startScanner()" style="background-color: #0ea5e9; margin-bottom: 15px;">📷 Scanner starten</button>
+                <!-- Schmaler, eleganter Scanner-Streifen -->
+                <div id="interactive" class="viewport" style="width: 100%; height: 160px; overflow: hidden; position: relative; border-radius: 8px; border: 2px solid #00f5d4; margin-bottom: 12px; background: #000;"></div>
+                
+                <button type="button" onclick="startFastScanner()" style="background-color: #0ea5e9; margin-bottom: 15px;">📷 Scanner starten</button>
                 
                 <label for="barcodeInput">Barcode:</label>
                 <input type="text" id="barcodeInput" placeholder="Barcode scannen oder eingeben...">
@@ -182,48 +183,64 @@ function loadDashboard(role) {
     `;
 
     dashContent.innerHTML = mainContentHtml + logoutHtml;
+    
+    // Automatisch starten für schnelle Erfassung
+    if (role === 'mitarbeiter' || role === 'teamleiter') {
+        setTimeout(() => startFastScanner(), 300);
+    }
 }
 
-function startScanner() {
-    if (typeof Html5QrCode === 'undefined') {
-        alert("Scanner-Bibliothek wird noch geladen...");
+function startFastScanner() {
+    if (typeof Quagga === 'undefined') {
+        alert("Scanner-Bibliothek lädt noch...");
         return;
     }
 
-    const readerEl = document.getElementById('reader');
-    if (!readerEl) return;
+    const targetEl = document.querySelector("#interactive");
+    if (!targetEl) return;
 
-    try {
-        if (!html5QrCode) {
-            html5QrCode = new Html5QrCode("reader");
+    if (isScanning) return;
+
+    Quagga.init({
+        inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: targetEl,
+            constraints: {
+                facingMode: "environment",
+                width: { min: 640 },
+                height: { min: 480 }
+            }
+        },
+        decoder: {
+            readers: ["code_128_reader", "ean_reader", "ean_8_reader", "code_39_reader"]
         }
-        
-        html5QrCode.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: { width: 250, height: 150 } },
-            (decodedText) => {
-                document.getElementById('barcodeInput').value = decodedText;
-                stopScanner();
-                alert("Erfolgreich gescannt: " + decodedText);
-            },
-            (errorMessage) => {}
-        ).catch((err) => {
-            alert("Kamera-Fehler: " + err);
-        });
-    } catch (e) {
-        console.error(e);
-    }
+    }, function(err) {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        Quagga.start();
+        isScanning = true;
+    });
+
+    Quagga.offDetected();
+    Quagga.onDetected(function(result) {
+        if (result && result.codeResult && result.codeResult.code) {
+            const code = result.codeResult.code;
+            document.getElementById('barcodeInput').value = code;
+            
+            // Kurzes Signal-Feedback & Stop
+            stopScanner();
+            if (navigator.vibrate) navigator.vibrate(100);
+        }
+    });
 }
 
 function stopScanner() {
-    if (html5QrCode) {
-        try {
-            if (html5QrCode.isScanning) {
-                html5QrCode.stop().then(() => {
-                    html5QrCode.clear();
-                }).catch(() => {});
-            }
-        } catch (e) {}
+    if (typeof Quagga !== 'undefined' && isScanning) {
+        Quagga.stop();
+        isScanning = false;
     }
 }
 
@@ -232,7 +249,7 @@ async function saveMhdItemHandler() {
     const name = document.getElementById('artName').value.trim();
     const date = document.getElementById('mhdDate').value;
 
-    if (!code || !name || !date) {
+    if (!code || name === '' || !date) {
         alert("Bitte alle Felder ausfüllen!");
         return;
     }
@@ -243,6 +260,8 @@ async function saveMhdItemHandler() {
         document.getElementById('barcodeInput').value = '';
         document.getElementById('artName').value = '';
         document.getElementById('mhdDate').value = '';
+        // Nach dem Speichern Scanner sofort wieder aktivieren
+        startFastScanner();
     } else {
         alert("Fehler beim Speichern zur Datenbank.");
     }
