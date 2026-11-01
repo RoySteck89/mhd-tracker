@@ -73,9 +73,7 @@ function setSimulatedRole(role) {
 }
 
 function loadDashboard(role) {
-    // Falls ein Scanner lief, erst sauber stoppen
     stopScanner();
-
     showView('viewDashboard');
     setStatus(`Angemeldet als Rolle: ${role.toUpperCase()}`);
 
@@ -149,10 +147,6 @@ function loadDashboard(role) {
                     <div style="display: flex; gap: 8px;">
                         <input type="text" id="tlKeyDisplay" value="MHD-Filiale-4473" readonly>
                     </div>
-                    <button style="margin-top: 12px;" onclick="toggleMhdList()" style="background-color: #0ea5e9;">📂 Gescannte MHD-Liste öffnen / schließen</button>
-                    <div id="teamleiterMhdList" class="hidden" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 10px;">
-                        <!-- Liste -->
-                    </div>
                 </div>
             `;
         }
@@ -162,8 +156,10 @@ function loadDashboard(role) {
             ${teamleiterExtra}
             <div class="card">
                 <h3>Barcode Scanner & Artikelerfassung</h3>
-                <!-- Kamera-Vorschaubild für den Scanner -->
+                
+                <!-- Scanner Bereich & Manueller Start-Button -->
                 <div id="reader" style="width: 100%; margin-bottom: 10px;"></div>
+                <button type="button" onclick="startScannerManual()" style="background-color: #0ea5e9; margin-bottom: 15px;">📷 Kamera-Scanner starten</button>
                 
                 <label for="barcodeInput">Barcode:</label>
                 <input type="text" id="barcodeInput" placeholder="Barcode scannen oder eingeben...">
@@ -186,39 +182,36 @@ function loadDashboard(role) {
     `;
 
     dashContent.innerHTML = mainContentHtml + logoutHtml;
-
-    // Kamera-Scanner für Mitarbeiter und Teamleiter automatisch starten
-    if (role !== 'admin' && role !== 'bezirksleitung') {
-        initScanner();
-    }
 }
 
-function initScanner() {
-    setTimeout(() => {
-        const readerEl = document.getElementById('reader');
-        if (readerEl && typeof Html5QrCode !== 'undefined') {
-            try {
-                if (!html5QrCode) {
-                    html5QrCode = new Html5QrCode("reader");
-                }
-                html5QrCode.start(
-                    { facingMode: "environment" }, // Nutzt automatisch die Rückkamera
-                    { fps: 10, qrbox: { width: 250, height: 150 } },
-                    (decodedText) => {
-                        const barcodeInput = document.getElementById('barcodeInput');
-                        if (barcodeInput) {
-                            barcodeInput.value = decodedText;
-                        }
-                    },
-                    (errorMessage) => {}
-                ).catch((err) => {
-                    console.log("Kamera-Start Hinweis:", err);
-                });
-            } catch (e) {
-                console.error("Scanner Fehler:", e);
+function startScannerManual() {
+    const readerEl = document.getElementById('reader');
+    if (readerEl && typeof Html5QrCode !== 'undefined') {
+        try {
+            if (!html5QrCode) {
+                html5QrCode = new Html5QrCode("reader");
             }
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 150 } },
+                (decodedText) => {
+                    const barcodeInput = document.getElementById('barcodeInput');
+                    if (barcodeInput) {
+                        barcodeInput.value = decodedText;
+                    }
+                    stopScanner();
+                    alert("Barcode erfolgreich gescannt: " + decodedText);
+                },
+                (errorMessage) => {}
+            ).catch((err) => {
+                alert("Kamera konnte nicht gestartet werden: " + err);
+            });
+        } catch (e) {
+            console.error("Scanner Fehler:", e);
         }
-    }, 400);
+    } else {
+        alert("Scanner-Bibliothek nicht geladen.");
+    }
 }
 
 function stopScanner() {
