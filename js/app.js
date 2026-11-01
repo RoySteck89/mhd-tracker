@@ -1,7 +1,7 @@
 let currentUser = JSON.parse(localStorage.getItem('mhd_user')) || null;
 let simulatedRole = null;
 let pendingKeyData = null;
-let html5QrcodeScanner = null;
+let html5QrCode = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     checkInitialState();
@@ -124,10 +124,7 @@ function loginWithPin() {
 
 // DASHBOARD LADEN & ROLLE ANZEIGEN
 async function loadDashboard(role) {
-    if (html5QrcodeScanner) {
-        try { await html5QrcodeScanner.clear(); } catch(e) {}
-        html5QrcodeScanner = null;
-    }
+    await stopScanner();
 
     document.getElementById('viewLogin').classList.add('hidden');
     document.getElementById('viewSetupKey').classList.add('hidden');
@@ -145,7 +142,6 @@ async function loadDashboard(role) {
     if (activeRole === 'admin') {
         titleEl.innerText = "👑 Super-Admin Steuerung";
         contentEl.innerHTML = `
-            <!-- 1. BEZIRKE ANLEGEN -->
             <div class="card">
                 <h3>🏢 Neuer Bezirk anlegen</h3>
                 <div style="display: flex; gap: 8px;">
@@ -154,13 +150,11 @@ async function loadDashboard(role) {
                 </div>
             </div>
 
-            <!-- 2. FILIALEN BEZIRKEN ZUORDNEN -->
             <div class="card">
                 <h3>🏪 Filialen & Bezirks-Zuordnung</h3>
                 <div id="filialAssignmentList">Lade Filialen...</div>
             </div>
 
-            <!-- 3. KEYS GENERIEREN -->
             <div class="card">
                 <h3>🔑 Aktivierungs-Key generieren</h3>
                 <select id="newKeyRole">
@@ -175,7 +169,6 @@ async function loadDashboard(role) {
                 <button onclick="generateKey()" style="margin-top: 10px;">Key in Datenbank speichern</button>
             </div>
 
-            <!-- 4. AKTIVE KEYS ANZEIGEN -->
             <div class="card">
                 <h3>📋 Aktive Keys & Verwaltung</h3>
                 <div id="keyList">Lade Keys...</div>
@@ -203,7 +196,7 @@ async function loadDashboard(role) {
 
             <div class="card">
                 <h3>Barcode Scanner & Artikelerfassung</h3>
-                <div id="reader" style="width: 100%; background: #000; border-radius: 4px; overflow: hidden;"></div>
+                <div id="reader" style="width: 100%; min-height: 200px; background: #000; border-radius: 6px; overflow: hidden;"></div>
                 
                 <div style="margin-top: 15px;">
                     <label><strong>Gescannter / Manueller Barcode:</strong></label>
@@ -233,7 +226,7 @@ async function loadDashboard(role) {
         contentEl.innerHTML = `
             <div class="card">
                 <h3>Barcode Scanner</h3>
-                <div id="reader" style="width: 100%; background: #000; border-radius: 4px; overflow: hidden;"></div>
+                <div id="reader" style="width: 100%; min-height: 200px; background: #000; border-radius: 6px; overflow: hidden;"></div>
                 
                 <div style="margin-top: 15px;">
                     <label><strong>Gescannter / Manueller Barcode:</strong></label>
@@ -256,6 +249,38 @@ async function loadDashboard(role) {
         setTimeout(() => {
             initScanner();
         }, 300);
+    }
+}
+
+// AUTOMATISCHER SCANNER OHNE EXTRA BUTTONS
+async function initScanner() {
+    const readerEl = document.getElementById('reader');
+    if (readerEl && !html5QrCode) {
+        html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+        
+        try {
+            await html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText) => {
+                    document.getElementById('scannedBarcode').value = decodedText;
+                },
+                (errorMessage) => {}
+            );
+        } catch (err) {
+            console.warn("Kamera-Start fehlgeschlagen / Berechtigung gefordert:", err);
+        }
+    }
+}
+
+async function stopScanner() {
+    if (html5QrCode) {
+        try {
+            await html5QrCode.stop();
+            html5QrCode.clear();
+        } catch (e) {}
+        html5QrCode = null;
     }
 }
 
@@ -293,10 +318,12 @@ async function renderFilialAssignments() {
     let html = "<div style='display: flex; flex-direction: column; gap: 10px;'>";
     filialen.forEach(f => {
         let options = `<option value="">-- Kein Bezirk zugewiesen --</option>`;
-        bezirke.forEach(b => {
-            const selected = f.bezirk_id === b.id ? 'selected' : '';
-            options += `<option value="${b.id}" ${selected}>${b.name}</option>`;
-        });
+        if (bezirke) {
+            bezirke.forEach(b => {
+                const selected = f.bezirk_id === b.id ? 'selected' : '';
+                options += `<option value="${b.id}" ${selected}>${b.name}</option>`;
+            });
+        }
 
         html += `
             <div style="background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
@@ -326,19 +353,6 @@ async function updateFilialeBezirk(filialeId, bezirkId) {
         alert("Fehler beim Aktualisieren: " + error.message);
     } else {
         alert("Zuordnung erfolgreich aktualisiert!");
-    }
-}
-
-// KAMERA SCANNER INITIALISIEREN
-function initScanner() {
-    if (document.getElementById('reader') && !html5QrcodeScanner) {
-        html5QrcodeScanner = new Html5QrcodeScanner(
-            "reader", { fps: 10, qrbox: 250 }, false);
-        html5QrcodeScanner.render((decodedText) => {
-            document.getElementById('scannedBarcode').value = decodedText;
-        }, (errorMessage) => {
-            // Fehler im Hintergrund ignorieren
-        });
     }
 }
 
@@ -476,7 +490,7 @@ async function renderKeyList() {
 }
 
 // ADMIN SIMULATOR UMSCHALTER
-function switchView(role) {
+async function switchView(role) {
     simulatedRole = role;
     
     ['admin', 'bezirksleiter', 'teamleiter', 'mitarbeiter'].forEach(r => {
@@ -487,13 +501,11 @@ function switchView(role) {
         }
     });
 
-    loadDashboard(role);
+    await loadDashboard(role);
 }
 
-function logoutDevice() {
-    if (html5QrcodeScanner) {
-        try { html5QrcodeScanner.clear(); } catch(e) {}
-    }
+async function logoutDevice() {
+    await stopScanner();
     document.getElementById('viewDashboard').classList.add('hidden');
     document.getElementById('viewLogin').classList.remove('hidden');
     simulatedRole = null;
