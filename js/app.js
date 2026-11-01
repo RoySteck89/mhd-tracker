@@ -1,6 +1,6 @@
 let currentSessionRole = localStorage.getItem('mhd_active_role') || 'mitarbeiter';
 let currentKey = localStorage.getItem('mhd_activation_key') || null;
-let isScanning = false;
+let html5QrCode = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     checkInitialState();
@@ -48,16 +48,24 @@ async function verifyAndActivateKey() {
         return;
     }
 
-    const dbData = await checkActivationKeyInDb(key);
-    if (dbData) {
-        localStorage.setItem('mhd_activation_key', key);
-        const role = dbData.rolle || 'mitarbeiter';
-        localStorage.setItem('mhd_active_role', role);
-        currentKey = key;
-        currentSessionRole = role;
-        loadDashboard(role);
+    if (typeof checkActivationKeyInDb === 'function') {
+        const dbData = await checkActivationKeyInDb(key);
+        if (dbData) {
+            localStorage.setItem('mhd_activation_key', key);
+            const role = dbData.rolle || 'mitarbeiter';
+            localStorage.setItem('mhd_active_role', role);
+            currentKey = key;
+            currentSessionRole = role;
+            loadDashboard(role);
+        } else {
+            alert("Ungültiger oder inaktiver Aktivierungs-Key!");
+        }
     } else {
-        alert("Ungültiger oder inaktiver Aktivierungs-Key!");
+        localStorage.setItem('mhd_activation_key', key);
+        localStorage.setItem('mhd_active_role', 'mitarbeiter');
+        currentKey = key;
+        currentSessionRole = 'mitarbeiter';
+        loadDashboard('mitarbeiter');
     }
 }
 
@@ -157,13 +165,10 @@ function loadDashboard(role) {
             <div class="card">
                 <h3>Barcode Scanner & Artikelerfassung</h3>
                 
-                <!-- Schmaler Live-Scanner Streifen -->
-                <div id="interactive" class="viewport" style="width: 100%; height: 160px; overflow: hidden; position: relative; border-radius: 8px; border: 2px solid #00f5d4; margin-bottom: 12px; background: #000;"></div>
-                
-                <button type="button" onclick="startFastScanner()" style="background-color: #0ea5e9; margin-bottom: 15px;">📷 Scanner starten</button>
+                <div id="reader" style="width: 100%; min-height: 250px; background: #000; border: 2px solid #00f5d4; border-radius: 8px; margin-bottom: 15px; position: relative;"></div>
                 
                 <label for="barcodeInput">Barcode:</label>
-                <input type="text" id="barcodeInput" placeholder="Barcode scannen oder eingeben...">
+                <input type="text" id="barcodeInput" placeholder="Wird automatisch eingetragen...">
                 
                 <label for="artName">Artikelbezeichnung:</label>
                 <input type="text" id="artName" placeholder="z.B. Milch 1L">
@@ -185,73 +190,55 @@ function loadDashboard(role) {
     dashContent.innerHTML = mainContentHtml + logoutHtml;
 
     if (role === 'mitarbeiter' || role === 'teamleiter') {
-        setTimeout(() => startFastScanner(), 300);
+        setTimeout(() => startAutoScanner(), 300);
     }
 }
 
-function startFastScanner() {
-    if (typeof Quagga === 'undefined') {
-        alert("Scanner-Bibliothek lädt noch...");
-        return;
+function startAutoScanner() {
+    const readerEl = document.getElementById('reader');
+    if (!readerEl) return;
+
+    const ScannerClass = window.Html5QrCode;
+    if (!ScannerClass) return;
+
+    try {
+        if (!html5QrCode) {
+            html5QrCode = new ScannerClass("reader");
+        }
+        
+        if (html5QrCode.isScanning) return;
+
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { 
+                fps: 10, 
+                qrbox: { width: 220, height: 120 } 
+            },
+            (decodedText) => {
+                const input = document.getElementById('barcodeInput');
+                if (input) {
+                    input.value = decodedText;
+                }
+                if (navigator.vibrate) navigator.vibrate(100);
+            },
+            (errorMessage) => {}
+        ).catch((err) => {
+            console.log("Kamera-Hinweis: " + err);
+        });
+    } catch (e) {
+        console.error(e);
     }
-
-    const targetEl = document.querySelector("#interactive");
-    if (!targetEl) return;
-
-    if (isScanning) return;
-
-    Quagga.init({
-        inputStream: {
-            name: "Live",
-            type: "LiveStream",
-            target: targetEl,
-            constraints: {
-                facingMode: "environment",
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            }
-        },
-        locator: {
-            patchSize: "medium",
-            halfSample: true
-        },
-        numOfWorkers: navigator.hardwareConcurrency || 4,
-        decoder: {
-            readers: [
-                "ean_reader",
-                "ean_8_reader",
-                "code_128_reader",
-                "code_39_reader"
-            ]
-        },
-        locate: true
-    }, function(err) {
-        if (err) {
-            console.error("Quagga Init Fehler:", err);
-            return;
-        }
-        Quagga.start();
-        isScanning = true;
-    });
-
-    Quagga.offDetected();
-    Quagga.onDetected(function(result) {
-        if (result && result.codeResult && result.codeResult.code) {
-            const code = result.codeResult.code;
-            document.getElementById('barcodeInput').value = code;
-            
-            if (navigator.vibrate) navigator.vibrate(100);
-            
-            stopScanner();
-            alert("Barcode erfolgreich erkannt: " + code);
-        }
-    });
 }
 
 function stopScanner() {
-    if (typeof Quagga !== 'undefined' && isScanning) {
-        Quagga.stop();
-        isScanning = false;
+    if (html5QrCode) {
+        try {
+            if (html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                }).catch(() => {});
+            }
+        } catch (e) {}
     }
 }
 
@@ -265,13 +252,16 @@ async function saveMhdItemHandler() {
         return;
     }
 
-    const success = await saveMhdItem(currentKey, code, name, date);
+    let success = true;
+    if (typeof saveMhdItem === "function") {
+        success = await saveMhdItem(currentKey, code, name, date);
+    }
+
     if (success) {
         alert("Erfolgreich in Supabase gespeichert!");
         document.getElementById('barcodeInput').value = '';
         document.getElementById('artName').value = '';
         document.getElementById('mhdDate').value = '';
-        startFastScanner();
     } else {
         alert("Fehler beim Speichern zur Datenbank.");
     }
