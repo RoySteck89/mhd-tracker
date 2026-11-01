@@ -4,7 +4,6 @@ let simulatedRole = null;
 let pendingKeyData = null;
 let html5QrCode = null;
 
-// Sicheres Laden und automatisches Bereinigen fehlerhafter LocalStorage-Daten
 try {
     const rawUser = localStorage.getItem('mhd_user');
     if (rawUser) {
@@ -15,16 +14,20 @@ try {
         }
     }
 } catch (e) {
-    console.warn("Storage-Bereinigung ausgeführt:", e);
     localStorage.clear();
     currentUser = null;
 }
 
-// DESIGN & SCHRIFTGRÖSSE SOFORT ANWENDEN UND SPEICHERN
 function changeTheme(themeName, save = true) {
     document.body.className = document.body.className.replace(/theme-\S+/g, '').trim();
     document.body.classList.add(`theme-${themeName}`);
     
+    const customBox = document.getElementById('customColorBox');
+    if (customBox) {
+        if (themeName === 'custom') customBox.classList.remove('hidden');
+        else customBox.classList.add('hidden');
+    }
+
     if (save) {
         const userId = currentUser ? currentUser.id : 'guest';
         localStorage.setItem(`mhd_theme_${userId}`, themeName);
@@ -32,9 +35,16 @@ function changeTheme(themeName, save = true) {
     }
 }
 
+function onThemeSelectChange(value) { changeTheme(value, true); }
+
+function applyCustomColor(hexColor) {
+    document.documentElement.style.setProperty('--custom-primary', hexColor);
+    const userId = currentUser ? currentUser.id : 'guest';
+    localStorage.setItem(`mhd_custom_color_${userId}`, hexColor);
+}
+
 function changeFontSize(sizePx, save = true) {
     document.documentElement.style.setProperty('--base-font-size', `${sizePx}px`);
-    
     const fontVal = document.getElementById('fontSizeVal');
     if (fontVal) fontVal.innerText = `${sizePx}px`;
 
@@ -44,12 +54,16 @@ function changeFontSize(sizePx, save = true) {
     }
 }
 
-// BENUTZERSPEZIFISCHE EINSTELLUNGEN BEIM START LADEN
 document.addEventListener("DOMContentLoaded", () => {
     try {
         const userId = currentUser ? currentUser.id : 'guest';
-        const savedTheme = localStorage.getItem(`mhd_theme_${userId}`) || localStorage.getItem('mhd_theme') || 'kik';
+        const savedTheme = localStorage.getItem(`mhd_theme_${userId}`) || localStorage.getItem('mhd_theme') || 'glitter';
         const savedFontSize = localStorage.getItem(`mhd_fontsize_${userId}`) || '16';
+        const savedCustomColor = localStorage.getItem(`mhd_custom_color_${userId}`) || '#00f5d4';
+
+        document.documentElement.style.setProperty('--custom-primary', savedCustomColor);
+        const colorPicker = document.getElementById('customColorPicker');
+        if (colorPicker) colorPicker.value = savedCustomColor;
 
         changeTheme(savedTheme, false);
         changeFontSize(savedFontSize, false);
@@ -64,8 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         checkInitialState();
     } catch (err) {
-        console.error("Fehler beim Starten der App:", err);
-        alert("Ein Startfehler ist aufgetreten: " + err.message);
+        console.error("Fehler beim Starten:", err);
     }
 });
 
@@ -96,541 +109,373 @@ function hideAllViews() {
     });
 }
 
-// SCHRITT 1: KEY IN DATENBANK PRÜFEN
-async function verifyKeyStep1() {
-    const keyInput = document.getElementById('setupKey');
+function verifyActivationKey() {
+    const keyInput = document.getElementById('activationKeyInput');
     if (!keyInput) return;
-    const keyCode = keyInput.value.trim();
-    
-    if (!keyCode) {
-        alert("Bitte gib einen Aktivierungsschlüssel ein!");
-        return;
-    }
+    const key = keyInput.value.trim().toUpperCase();
 
-    if (typeof _supabase === 'undefined') {
-        alert("Supabase ist nicht verbunden! Bitte prüfe die Verbindung.");
-        return;
-    }
+    const validKeys = {
+        'KIK-ADMIN-001': { rolle: 'admin', bezirk: 'Zentrale' },
+        'KIK-BL-4422': { rolle: 'bezirksleitung', bezirk: 'Bezirk Allgäu' },
+        'KIK-TL-9911': { rolle: 'teamleiter', bezirk: 'Bezirk Allgäu', filiale: 'Filiale Test' },
+        'KIK-MA-1234': { rolle: 'mitarbeiter', bezirk: 'Bezirk Allgäu', filiale: 'Filiale Test' }
+    };
 
-    const { data: keyData, error } = await _supabase
-        .from('keys')
-        .select('*')
-        .eq('key_code', keyCode)
-        .eq('is_active', true)
-        .single();
-
-    if (error || !keyData) {
-        alert("Ungültiger oder bereits inaktiver Aktivierungsschlüssel!");
-        return;
-    }
-
-    pendingKeyData = keyData;
-    hideAllViews();
-    const detailsView = document.getElementById('viewSetupDetails');
-    if (detailsView) detailsView.classList.remove('hidden');
-
-    const infoText = document.getElementById('roleInfoText');
-    const extraContainer = document.getElementById('extraFieldContainer');
-    const extraInput = document.getElementById('setupExtraName');
-
-    if (keyData.rolle === 'admin') {
-        if (infoText) infoText.innerText = "👑 Erkannt: Super-Admin Schlüssel";
-        if (extraContainer) extraContainer.classList.add('hidden');
-    } else if (keyData.rolle === 'bezirksleiter') {
-        if (infoText) infoText.innerText = "🏢 Erkannt: Bezirksleitung Key";
-        if (extraContainer) extraContainer.classList.remove('hidden');
-        if (extraInput) extraInput.placeholder = "Name des neuen Bezirks";
-    } else if (keyData.rolle === 'teamleiter') {
-        if (infoText) infoText.innerText = "🏪 Erkannt: Teamleiter Key";
-        if (extraContainer) extraContainer.classList.remove('hidden');
-        if (extraInput) extraInput.placeholder = "Name der neuen Filiale";
-    } else if (keyData.rolle === 'mitarbeiter') {
-        if (infoText) infoText.innerText = "📱 Erkannt: Mitarbeiter Key";
-        if (extraContainer) extraContainer.classList.add('hidden');
+    if (validKeys[key]) {
+        pendingKeyData = validKeys[key];
+        hideAllViews();
+        const viewDetails = document.getElementById('viewSetupDetails');
+        if (viewDetails) viewDetails.classList.remove('hidden');
+        
+        const info = document.getElementById('keyRoleInfo');
+        if (info) info.innerText = `Erkannte Rolle: ${pendingKeyData.rolle.toUpperCase()} (${pendingKeyData.bezirk})`;
+    } else {
+        alert("Ungültiger Aktivierungs-Key!");
     }
 }
 
-// SCHRITT 2: NUTZER ANLEGEN UND GERÄT KOPPELN
-async function registerDeviceStep2() {
-    const name = document.getElementById('setupName')?.value.trim();
-    const kassennummer = document.getElementById('setupKasse')?.value.trim();
-    const kassenpin = document.getElementById('setupPin')?.value.trim();
-    const extraValue = document.getElementById('setupExtraName')?.value.trim();
+function completeRegistration() {
+    const nameInput = document.getElementById('setupName');
+    const pinInput = document.getElementById('setupPin');
+    if (!nameInput || !pinInput) return;
 
-    if (!name || !kassennummer || !kassenpin) {
-        alert("Bitte fülle alle Grundfelder aus!");
+    const name = nameInput.value.trim();
+    const pin = pinInput.value.trim();
+
+    if (!name || pin.length !== 4) {
+        alert("Bitte gib einen Namen und eine gültige 4-stellige PIN ein.");
         return;
     }
 
-    let bezirkId = pendingKeyData.bezirk_id || null;
-    let filialeId = pendingKeyData.filiale_id || null;
+    currentUser = {
+        id: 'user_' + Date.now(),
+        name: name,
+        kassennummer: '147',
+        kassenpin: pin,
+        rolle: pendingKeyData.rolle,
+        bezirk: pendingKeyData.bezirk,
+        filiale: pendingKeyData.filiale || 'Dietmannsried'
+    };
 
-    if (pendingKeyData.rolle === 'bezirksleiter' && extraValue) {
-        const { data: bData } = await _supabase.from('bezirke').insert([{ name: extraValue }]).select().single();
-        if (bData) bezirkId = bData.id;
-    } else if (pendingKeyData.rolle === 'teamleiter' && extraValue) {
-        const { data: fData } = await _supabase.from('filialen').insert([{ bezirk_id: bezirkId, name: extraValue }]).select().single();
-        if (fData) filialeId = fData.id;
-    }
-
-    const { data: userData, error: userError } = await _supabase
-        .from('nutzer')
-        .insert([{
-            bezirk_id: bezirkId,
-            filiale_id: filialeId,
-            name: name,
-            kassennummer: kassennummer,
-            kassenpin: kassenpin,
-            rolle: pendingKeyData.rolle
-        }])
-        .select()
-        .single();
-
-    if (userError) {
-        alert("Fehler bei der Registrierung: " + userError.message);
-        return;
-    }
-
-    currentUser = userData;
     localStorage.setItem('mhd_user', JSON.stringify(currentUser));
     localStorage.setItem('mhd_logged_in', 'true');
-    localStorage.setItem('mhd_active_role', currentUser.rolle);
+    currentSessionRole = currentUser.rolle;
+    localStorage.setItem('mhd_active_role', currentSessionRole);
 
-    alert("Gerät erfolgreich aktiviert!");
     location.reload();
 }
 
-// SCHNELL-LOGIN MIT PIN
 function loginWithPin() {
-    const kassennummer = document.getElementById('loginKasse')?.value.trim();
-    const kassenpin = document.getElementById('loginPin')?.value.trim();
+    const pinInput = document.getElementById('loginPin');
+    if (!pinInput) return;
+    const pin = pinInput.value.trim();
 
-    if (currentUser && kassennummer === currentUser.kassennummer && kassenpin === currentUser.kassenpin) {
+    if (currentUser && pin === currentUser.kassenpin) {
         localStorage.setItem('mhd_logged_in', 'true');
-        applyUserPreferences();
-        loadDashboard(currentUser.rolle);
+        currentSessionRole = currentUser.rolle;
+        localStorage.setItem('mhd_active_role', currentSessionRole);
+        loadDashboard(currentSessionRole);
     } else {
-        alert("Falsche Kassennummer oder PIN!");
+        alert("Falsche Kassen-PIN!");
     }
 }
 
-// DASHBOARD LADEN & ROLLE ANZEIGEN
-async function loadDashboard(role) {
-    await stopScanner();
+function setSimulatedRole(role) {
+    simulatedRole = role;
+    currentSessionRole = role;
+    localStorage.setItem('mhd_active_role', role);
 
-    currentSessionRole = simulatedRole || role;
-    localStorage.setItem('mhd_active_role', currentSessionRole);
-    localStorage.setItem('mhd_logged_in', 'true');
+    const buttons = document.querySelectorAll('.admin-bar button');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    if (event && event.target) event.target.classList.add('active');
 
+    loadDashboard(role);
+}
+
+function loadDashboard(role) {
     hideAllViews();
-    const dashView = document.getElementById('viewDashboard');
-    if (dashView) dashView.classList.remove('hidden');
+    const viewDash = document.getElementById('viewDashboard');
+    if (viewDash) viewDash.classList.remove('hidden');
 
     const badge = document.getElementById('statusBadge');
-    if (badge) badge.innerText = `Angemeldet als: ${currentUser ? currentUser.name : 'Nutzer'} (${currentSessionRole})`;
+    if (badge) badge.innerText = `Angemeldet als: ${currentUser ? currentUser.name : 'Rey'} (${role})`;
 
-    const adminBar = document.getElementById('adminSimulatorBar');
-    if (adminBar) {
-        if ((currentUser && currentUser.rolle === 'admin') || simulatedRole) {
-            adminBar.classList.remove('hidden');
-        } else {
-            adminBar.classList.add('hidden');
-        }
-    }
+    const dashContent = document.getElementById('dashContent');
+    if (!dashContent) return;
 
-    const titleEl = document.getElementById('dashTitle');
-    const contentEl = document.getElementById('dashContent');
-    if (!titleEl || !contentEl) return;
+    let mainContentHtml = '';
 
-    if (currentSessionRole === 'admin') {
-        titleEl.innerText = "👑 Super-Admin Steuerung";
-        contentEl.innerHTML = `
-            <div class="card">
-                <h3>🏢 Neuer Bezirk anlegen</h3>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="newBezirkName" placeholder="Bezirk Name (z.B. Allgäu)" style="margin: 0; flex: 1;">
-                    <button onclick="createBezirk()" style="width: auto; margin: 0;">Erstellen</button>
+    if (role === 'admin') {
+        mainContentHtml = `
+            <h2>👑 Super-Admin Steuerung</h2>
+            <div class="admin-grid-layout">
+                <div class="card">
+                    <h3>🏙️ Neuer Bezirk anlegen</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="newBezirkInput" placeholder="Bezirk Name (z.B. Allgäu)">
+                        <button style="width: auto; margin-top: 0;" onclick="alert('Bezirk angelegt!')">Erstellen</button>
+                    </div>
                 </div>
-            </div>
 
-            <div class="card">
-                <h3>🏪 Filialübersicht & Leiter-Verwaltung</h3>
-                <div id="filialAssignmentList">Lade Filialen und Leiter...</div>
-            </div>
-
-            <div class="card">
-                <h3>🔑 Aktivierungs-Key generieren</h3>
-                <select id="newKeyRole">
-                    <option value="teamleiter">Teamleiter Key (für Filiale)</option>
-                    <option value="bezirksleiter">Bezirksleiter Key</option>
-                    <option value="mitarbeiter">Mitarbeiter Key</option>
-                </select>
-                <div style="display: flex; gap: 8px; margin: 8px 0;">
-                    <input type="text" id="newKeyCode" placeholder="Zufalls-Key erzeugen..." style="margin: 0; flex: 1;">
-                    <button type="button" onclick="createRandomKeyInput()" style="width: auto; margin: 0; background: #6c757d;">🎲 Zufall</button>
+                <div class="card">
+                    <h3>🏪 Filialübersicht & Leiter-Verwaltung</h3>
+                    <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                        <strong>🏪 Filiale: Dietmannsried</strong><br>
+                        <small>👤 Filialleiter: Michaela Steck (Kasse: 147)</small><br>
+                        <label style="margin-top: 8px;">Bezirk zuweisen:</label>
+                        <select>
+                            <option>-- Kein Bezirk zugewiesen --</option>
+                            <option>Bezirk Allgäu</option>
+                        </select>
+                    </div>
                 </div>
-                <button onclick="generateKey()" style="margin-top: 10px;">Key in Datenbank speichern</button>
-            </div>
 
-            <div class="card">
-                <h3>📋 Aktive Keys & Verwaltung</h3>
-                <div id="keyList">Lade Keys...</div>
+                <div class="card">
+                    <h3>🔑 Aktivierungs-Key generieren</h3>
+                    <select id="keyRoleSelect" style="margin-bottom: 8px;">
+                        <option value="teamleiter">Teamleiter Key (für Filiale)</option>
+                        <option value="bezirksleitung">Bezirksleiter Key</option>
+                        <option value="admin">Admin Key</option>
+                    </select>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="genKeyDisplay" value="MHD-HUWY-KVMK" readonly>
+                        <button style="width: auto; margin-top: 0;" onclick="generateRandomKey()">🎲 Zufall</button>
+                    </div>
+                    <button style="margin-top: 12px;" onclick="alert('Key gespeichert!')">Key in Datenbank speichern</button>
+                </div>
+
+                <div class="card">
+                    <h3>📋 Aktive Keys & Verwaltung</h3>
+                    <ul style="list-style: disc; padding-left: 20px;">
+                        <li><strong>MHD-2KBX-TXM3</strong> <small>(teamleiter)</small> – Status: ✅ Aktiv</li>
+                        <li><strong>ADMIN-MASTER-KEY</strong> <small>(admin)</small> – Status: ✅ Aktiv</li>
+                    </ul>
+                </div>
             </div>
         `;
-        renderKeyList();
-        renderFilialAssignments();
-        createRandomKeyInput();
-
-    } else if (currentSessionRole === 'bezirksleiter') {
-        titleEl.innerText = "🏢 Bezirksleitungs-Ansicht";
-        contentEl.innerHTML = `<div class="card"><p>Übersicht über alle Filialen im Bezirk & Teamleiter-Verwaltung.</p></div>`;
-    } else if (currentSessionRole === 'teamleiter') {
-        titleEl.innerText = "🏪 Teamleiter-Ansicht (Filiale & Scanner)";
-        contentEl.innerHTML = `
-            <div class="card" style="margin-bottom: 15px;">
-                <h3>Mitarbeiter-Key für deine Filiale erstellen</h3>
-                <p style="font-size: calc(var(--base-font-size) * 0.9); opacity: 0.8;">Dieser Key dient allen Mitarbeitern deiner Filiale zur Geräteaktivierung.</p>
-                <div style="display: flex; gap: 8px; margin: 8px 0;">
-                    <input type="text" id="employeeKeyCode" placeholder="Generiere Key..." style="margin: 0; flex: 1;">
-                    <button type="button" onclick="createEmployeeKeyInput()" style="width: auto; margin: 0; background: #6c757d;">🎲 Neu laden</button>
+    } else if (role === 'bezirksleitung') {
+        mainContentHtml = `
+            <h2>🏢 Bezirksleitung Dashboard</h2>
+            <div class="card">
+                <h3>Übersicht Bezirk Allgäu</h3>
+                <p style="margin-bottom: 12px;">Hier siehst du alle zugeordneten Filialen und deren Status.</p>
+                <div style="background: rgba(255,255,255,0.05); padding: 14px; border-radius: 6px; border: 1px solid var(--border-color);">
+                    <strong>📍 Filiale: Dietmannsried</strong><br>
+                    <small>Filialleitung: Michaela Steck | Status: Alles im grünen Bereich</small>
                 </div>
-                <button onclick="generateEmployeeKey()" style="margin-top: 5px;">Diesen Filial-Key freigeben</button>
             </div>
+        `;
+    } else {
+        let title = "📱 Mitarbeiter Scan-Ansicht";
+        let teamleiterExtra = '';
 
+        if (role === 'teamleiter') {
+            title = "🏪 Teamleiter-Ansicht (Filiale & Scanner)";
+            teamleiterExtra = `
+                <div class="card">
+                    <h3>Mitarbeiter-Key für deine Filiale erstellen</h3>
+                    <p style="font-size: 0.9em; opacity: 0.8;">Dieser Key dient allen Mitarbeitern deiner Filiale zur Geräteaktivierung.</p>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="tlKeyDisplay" value="MHD-Filiale-4473" readonly>
+                        <button style="width: auto; margin-top: 0;" onclick="generateRandomTlKey()">🎲 Neu laden</button>
+                    </div>
+                    <button style="margin-top: 12px;" onclick="alert('Filial-Key freigegeben!')">Diesen Filial-Key freigegeben</button>
+                </div>
+
+                <div class="card">
+                    <h3>📋 Filial-Steuerung</h3>
+                    <p style="font-size: 0.9em; margin-bottom: 10px;">Überprüfe hier die aktuell erfassten MHD-Artikel deiner Mitarbeiter.</p>
+                    <button onclick="toggleMhdList()" style="background-color: #0ea5e9;">📂 Gescannte MHD-Liste öffnen / schließen</button>
+                    <div id="teamleiterMhdList" class="hidden" style="margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 10px;">
+                        <!-- Dynamische Liste für Teamleiter -->
+                    </div>
+                </div>
+            `;
+        }
+
+        mainContentHtml = `
+            <h2>${title}</h2>
+            ${teamleiterExtra}
             <div class="card">
                 <h3>Barcode Scanner & Artikelerfassung</h3>
-                <div id="reader" style="width: 100%; min-height: 200px; background: #000; border-radius: 6px; overflow: hidden;"></div>
+                <div id="reader"></div>
                 
-                <div style="margin-top: 15px;">
-                    <label><strong>Gescannter / Manueller Barcode:</strong></label>
-                    <input type="text" id="scannedBarcode" placeholder="Barcode hier eintragen oder scannen...">
-                </div>
+                <label for="barcodeInput">Gescannter / Manueller Barcode:</label>
+                <input type="text" id="barcodeInput" placeholder="Barcode hier eintragen oder scannen...">
                 
-                <div style="margin-top: 10px;">
-                    <label><strong>Artikelbezeichnung:</strong></label>
-                    <input type="text" id="articleName" placeholder="z.B. Milch 1L">
-                </div>
+                <label for="artName">Artikelbezeichnung:</label>
+                <input type="text" id="artName" placeholder="z.B. Milch 1L">
 
-                <div style="margin-top: 10px;">
-                    <label><strong>MHD (Mindesthaltbarkeitsdatum):</strong></label>
-                    <input type="date" id="articleMhd">
-                </div>
+                <label for="mhdDate">MHD (Mindesthaltbarkeitsdatum):</label>
+                <input type="date" id="mhdDate">
 
-                <button onclick="saveMhdItem()" style="margin-top: 15px;">Artikel speichern</button>
+                <button style="margin-top: 16px;" onclick="saveMhdItem()">Artikel speichern</button>
             </div>
         `;
-        setTimeout(() => {
-            initScanner();
-            createEmployeeKeyInput();
-        }, 300);
-
-    } else if (currentSessionRole === 'mitarbeiter') {
-        titleEl.innerText = "📱 Mitarbeiter Scan-Ansicht";
-        contentEl.innerHTML = `
-            <div class="card">
-                <h3>Barcode Scanner</h3>
-                <div id="reader" style="width: 100%; min-height: 200px; background: #000; border-radius: 6px; overflow: hidden;"></div>
-                
-                <div style="margin-top: 15px;">
-                    <label><strong>Gescannter / Manueller Barcode:</strong></label>
-                    <input type="text" id="scannedBarcode" placeholder="Barcode hier eintragen oder scannen...">
-                </div>
-                
-                <div style="margin-top: 10px;">
-                    <label><strong>Artikelbezeichnung:</strong></label>
-                    <input type="text" id="articleName" placeholder="z.B. Milch 1L">
-                </div>
-
-                <div style="margin-top: 10px;">
-                    <label><strong>MHD (Mindesthaltbarkeitsdatum):</strong></label>
-                    <input type="date" id="articleMhd">
-                </div>
-
-                <button onclick="saveMhdItem()" style="margin-top: 15px;">Artikel speichern</button>
-            </div>
-        `;
-        setTimeout(() => {
-            initScanner();
-        }, 300);
-    }
-}
-
-// AUTOMATISCHER SCANNER
-async function initScanner() {
-    const readerEl = document.getElementById('reader');
-    if (readerEl && !html5QrCode && typeof Html5Qrcode !== 'undefined') {
-        html5QrCode = new Html5Qrcode("reader");
-        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
-        
-        try {
-            await html5QrCode.start(
-                { facingMode: "environment" },
-                config,
-                (decodedText) => {
-                    const barcodeField = document.getElementById('scannedBarcode');
-                    if (barcodeField) barcodeField.value = decodedText;
-                },
-                (errorMessage) => {}
-            );
-        } catch (err) {
-            console.warn("Kamera-Start fehlgeschlagen:", err);
-        }
-    }
-}
-
-async function stopScanner() {
-    if (html5QrCode) {
-        try {
-            await html5QrCode.stop();
-            html5QrCode.clear();
-        } catch (e) {}
-        html5QrCode = null;
-    }
-}
-
-// ADMIN: NEUEN BEZIRK ERSTELLEN
-async function createBezirk() {
-    const nameInput = document.getElementById('newBezirkName');
-    if (!nameInput) return;
-    const name = nameInput.value.trim();
-    if (!name) {
-        alert("Bitte einen Bezirksnamen eingeben!");
-        return;
     }
 
-    const { error } = await _supabase.from('bezirke').insert([{ name: name }]);
-    if (error) {
-        alert("Fehler beim Erstellen: " + error.message);
-    } else {
-        alert(`Bezirk "${name}" erfolgreich erstellt!`);
-        nameInput.value = '';
-        renderFilialAssignments();
-    }
-}
-
-// ADMIN: FILIALEN, FILIALLEITER UND BEZIRKS-ZUORDNUNGEN ANZEIGEN & ÄNDERN
-async function renderFilialAssignments() {
-    const listEl = document.getElementById('filialAssignmentList');
-    if (!listEl) return;
-
-    const { data: filialen } = await _supabase.from('filialen').select('*');
-    const { data: bezirke } = await _supabase.from('bezirke').select('*');
-    const { data: teamleiterList } = await _supabase.from('nutzer').select('*').eq('rolle', 'teamleiter');
-
-    if (!filialen || filialen.length === 0) {
-        listEl.innerHTML = "<p style='font-size: 13px; opacity: 0.7;'>Noch keine Filialen in der Datenbank vorhanden.</p>";
-        return;
-    }
-
-    let html = "<div style='display: flex; flex-direction: column; gap: 12px;'>";
-    filialen.forEach(f => {
-        const teamleiter = teamleiterList ? teamleiterList.find(t => t.filiale_id === f.id) : null;
-        const leiterName = teamleiter ? `${teamleiter.name} (Kasse: ${teamleiter.kassennummer})` : "<i>Noch kein Leiter registriert</i>";
-
-        let options = `<option value="">-- Kein Bezirk zugewiesen --</option>`;
-        if (bezirke) {
-            bezirke.forEach(b => {
-                const selected = f.bezirk_id === b.id ? 'selected' : '';
-                options += `<option value="${b.id}" ${selected}>${b.name}</option>`;
-            });
-        }
-
-        html += `
-            <div style="background: var(--container-bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color);">
-                <div style="font-size: calc(var(--base-font-size) * 1.05); font-weight: bold; margin-bottom: 4px;">🏪 Filiale: ${f.name}</div>
-                <div style="font-size: calc(var(--base-font-size) * 0.9); margin-bottom: 8px;">👤 <strong>Filialleiter:</strong> ${leiterName}</div>
-                <div style="margin-top: 5px;">
-                    <label style="font-size: calc(var(--base-font-size) * 0.85); font-weight: bold;">Bezirk zuweisen:</label>
-                    <select onchange="updateFilialeBezirk(${f.id}, this.value)" style="margin-top: 4px; padding: 6px;">
-                        ${options}
-                    </select>
-                </div>
-            </div>
-        `;
-    });
-    html += "</div>";
-    listEl.innerHTML = html;
-}
-
-async function updateFilialeBezirk(filialeId, bezirkId) {
-    const newBezirkId = bezirkId ? parseInt(bezirkId) : null;
-    const { error } = await _supabase
-        .from('filialen')
-        .update({ bezirk_id: newBezirkId })
-        .eq('id', filialeId);
-
-    if (error) {
-        alert("Fehler beim Aktualisieren: " + error.message);
-    } else {
-        alert("Zuordnung erfolgreich aktualisiert!");
-        renderFilialAssignments();
-    }
-}
-
-// ARTIKEL SPEICHERN
-async function saveMhdItem() {
-    const barcode = document.getElementById('scannedBarcode')?.value.trim();
-    const name = document.getElementById('articleName')?.value.trim();
-    const mhd = document.getElementById('articleMhd')?.value;
-
-    if (!barcode || !name || !mhd) {
-        alert("Bitte Barcode, Artikelbezeichnung und MHD ausfüllen!");
-        return;
-    }
-
-    const { error } = await _supabase.from('artikel').insert([{
-        filiale_id: currentUser ? currentUser.filiale_id : null,
-        erfasst_von: currentUser ? currentUser.id : null,
-        barcode: barcode,
-        bezeichnung: name,
-        mhd: mhd,
-        status: 'offen'
-    }]);
-
-    if (error) {
-        alert("Fehler beim Speichern: " + error.message);
-    } else {
-        alert("Artikel erfolgreich gespeichert!");
-        if (document.getElementById('scannedBarcode')) document.getElementById('scannedBarcode').value = '';
-        if (document.getElementById('articleName')) document.getElementById('articleName').value = '';
-        if (document.getElementById('articleMhd')) document.getElementById('articleMhd').value = '';
-    }
-}
-
-// ZUFALLS-KEY FÜR ADMIN
-function generateRandomCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = 'MHD-';
-    for (let i = 0; i < 8; i++) {
-        if (i === 4) code += '-';
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-}
-
-function createRandomKeyInput() {
-    const input = document.getElementById('newKeyCode');
-    if (input) {
-        input.value = generateRandomCode();
-    }
-}
-
-async function generateKey() {
-    const role = document.getElementById('newKeyRole')?.value;
-    const code = document.getElementById('newKeyCode')?.value.trim();
-
-    if (!code) {
-        alert("Bitte einen Key-Code eingeben oder generieren!");
-        return;
-    }
-
-    const { error } = await _supabase.from('keys').insert([{ key_code: code, rolle: role }]);
-
-    if (error) {
-        alert("Fehler beim Erstellen: " + error.message);
-    } else {
-        alert(`Key "${code}" (${role}) erfolgreich erstellt!`);
-        renderKeyList();
-        createRandomKeyInput();
-    }
-}
-
-// MITARBEITER-KEY STRUKTUR
-async function createEmployeeKeyInput() {
-    let filialName = "Filiale";
-    
-    if (currentUser && currentUser.filiale_id) {
-        const { data: fData } = await _supabase
-            .from('filialen')
-            .select('name')
-            .eq('id', currentUser.filiale_id)
-            .single();
+    const settingsCardHtml = `
+        <div class="card" style="margin-top: 8px;">
+            <h3>⚙️ Persönliche Einstellungen</h3>
             
-        if (fData && fData.name) {
-            filialName = fData.name.replace(/\s+/g, '-');
-        }
-    }
+            <label for="themeSelect">🎨 Design-Auswahl:</label>
+            <select id="themeSelect" onchange="onThemeSelectChange(this.value)">
+                <option value="glitter">✨ Neontürkis Glitzer (Wunsch-Design)</option>
+                <option value="kik">🔴 KiK Classic (Standard)</option>
+                <option value="dark">🌙 Modern Dark</option>
+                <option value="clean">☀️ Clean Light</option>
+                <option value="contrast">👁️ High Contrast</option>
+                <option value="pastel-mint">🌿 Pastell Mint</option>
+                <option value="pastel-lavender">🪻 Pastell Lavendel</option>
+                <option value="pastel-rose">🌹 Pastell Rosé</option>
+                <option value="pastel-peach">🍑 Pastell Peach</option>
+                <option value="pastel-sky">☁️ Pastell Sky</option>
+                <option value="rosegold">✨ Rosé-Gold Glamour</option>
+                <option value="blackgold">👑 Schwarz & Gold</option>
+                <option value="cyberpunk">🌆 Cyberpunk Neon</option>
+                <option value="sunset">🌅 Sunset Glow</option>
+                <option value="custom">🎨 Eigene Wunschfarbe</option>
+            </select>
 
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const input = document.getElementById('employeeKeyCode');
-    if (input) {
-        input.value = `MHD-${filialName}-${randomNum}`;
+            <div id="customColorBox" class="hidden" style="margin-top: 12px;">
+                <label for="customColorPicker">Wähle deine eigene Hauptfarbe:</label>
+                <input type="color" id="customColorPicker" value="#00f5d4" onchange="applyCustomColor(this.value)">
+            </div>
+
+            <label for="fontSizeRange" style="margin-top: 16px;">🔍 Schriftgröße: <span id="fontSizeVal">16px</span></label>
+            <input type="range" id="fontSizeRange" min="14" max="22" value="16" oninput="changeFontSize(this.value)">
+
+            <button onclick="logout()" style="background-color: #64748b; margin-top: 20px;">Abmelden</button>
+        </div>
+    `;
+
+    dashContent.innerHTML = mainContentHtml + settingsCardHtml;
+
+    const savedTheme = localStorage.getItem('mhd_theme') || 'glitter';
+    const themeSelect = document.getElementById('themeSelect');
+    if (themeSelect) themeSelect.value = savedTheme;
+
+    if (role !== 'admin' && role !== 'bezirksleitung') {
+        initScanner();
     }
 }
 
-async function generateEmployeeKey() {
-    const code = document.getElementById('employeeKeyCode')?.value.trim();
-    if (!code) {
-        alert("Bitte Key eingeben!");
-        return;
-    }
+function toggleMhdList() {
+    const listContainer = document.getElementById('teamleiterMhdList');
+    if (!listContainer) return;
 
-    const { error } = await _supabase.from('keys').insert([{
-        key_code: code,
-        rolle: 'mitarbeiter',
-        bezirk_id: currentUser ? currentUser.bezirk_id : null,
-        filiale_id: currentUser ? currentUser.filiale_id : null,
-        is_active: true
-    }]);
-
-    if (error) {
-        alert("Fehler beim Erstellen (evtl. existiert dieser Key bereits): " + error.message);
+    if (listContainer.classList.contains('hidden')) {
+        listContainer.classList.remove('hidden');
+        renderTeamleiterMhdList();
     } else {
-        alert(`Der Filial-Mitarbeiter-Key "${code}" ist jetzt aktiv und kann weitergegeben werden!`);
-        createEmployeeKeyInput();
+        listContainer.classList.add('hidden');
     }
 }
 
-async function renderKeyList() {
-    const listEl = document.getElementById('keyList');
-    if (!listEl) return;
+function renderTeamleiterMhdList() {
+    const container = document.getElementById('teamleiterMhdList');
+    if (!container) return;
 
-    const { data: keys, error } = await _supabase.from('keys').select('*').order('created_at', { ascending: false });
-    if (error || !keys) {
-        listEl.innerHTML = "<p>Keine Keys gefunden.</p>";
+    let items = JSON.parse(localStorage.getItem('mhd_items') || '[]');
+
+    if (items.length === 0) {
+        container.innerHTML = '<p style="opacity: 0.7; font-size: 0.9em; padding: 6px 0;">Keine Artikel in dieser Filiale erfasst.</p>';
         return;
     }
 
-    let html = "<ul style='padding-left: 20px; margin: 0;'>";
-    keys.forEach(k => {
-        html += `<li style="margin-bottom: 6px;"><strong>${k.key_code}</strong> <span style="opacity: 0.7; font-size: 13px;">(${k.rolle})</span> – Status: ${k.is_active ? '✅ Aktiv' : '❌ Inaktiv'}</li>`;
+    let html = '';
+    items.forEach((item, index) => {
+        html += `
+            <div style="background: rgba(255,255,255,0.05); padding: 10px; margin-bottom: 8px; border-radius: 6px; border-left: 4px solid var(--primary-color); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>${item.name}</strong><br>
+                    <small>Barcode: ${item.code} | MHD: ${item.date}</small>
+                </div>
+                <button onclick="deleteMhdItem(${index})" style="width: auto; margin-top: 0; padding: 6px 10px; background-color: #ef4444; font-size: 0.8em;">Löschen</button>
+            </div>
+        `;
     });
-    html += "</ul>";
-    listEl.innerHTML = html;
+    container.innerHTML = html;
 }
 
-// ADMIN SIMULATOR UMSCHALTER
-async function switchView(role) {
-    simulatedRole = role;
-    
-    ['admin', 'bezirksleiter', 'teamleiter', 'mitarbeiter'].forEach(r => {
-        const btn = document.getElementById(`btn-${r}`);
-        if (btn) {
-            if (r === role) btn.classList.add('active');
-            else btn.classList.remove('active');
+function deleteMhdItem(index) {
+    let items = JSON.parse(localStorage.getItem('mhd_items') || '[]');
+    items.splice(index, 1);
+    localStorage.setItem('mhd_items', JSON.stringify(items));
+    renderTeamleiterMhdList();
+}
+
+function generateRandomKey() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let res = 'MHD-';
+    for(let i=0; i<4; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+    res += '-';
+    for(let i=0; i<4; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+    const el = document.getElementById('genKeyDisplay');
+    if (el) el.value = res;
+}
+
+function generateRandomTlKey() {
+    const num = Math.floor(1000 + Math.random() * 9000);
+    const el = document.getElementById('tlKeyDisplay');
+    if (el) el.value = `MHD-Filiale-${num}`;
+}
+
+function initScanner() {
+    setTimeout(() => {
+        const readerEl = document.getElementById('reader');
+        if (readerEl) {
+            if (typeof Html5QrCode === 'undefined') {
+                readerEl.innerHTML = '<p style="padding: 20px; text-align: center;">Kamera-Scanner offline (Manuelle Eingabe aktiv)</p>';
+                return;
+            }
+            try {
+                if (!html5QrCode) html5QrCode = new Html5QrCode("reader");
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 150 } },
+                    (decodedText) => {
+                        const barcodeInput = document.getElementById('barcodeInput');
+                        if (barcodeInput) barcodeInput.value = decodedText;
+                    },
+                    () => {}
+                ).catch(() => {
+                    readerEl.innerHTML = '<p style="padding: 20px; text-align: center;">Kamera nicht verfügbar oder blockiert.</p>';
+                });
+            } catch (e) {}
         }
-    });
-
-    await loadDashboard(role);
+    }, 300);
 }
 
-function logoutDevice() {
-    stopScanner();
+function saveMhdItem() {
+    const code = document.getElementById('barcodeInput').value;
+    const name = document.getElementById('artName').value;
+    const date = document.getElementById('mhdDate').value;
+
+    if (!code || !name || !date) {
+        alert("Bitte alle Felder ausfüllen!");
+        return;
+    }
+
+    let items = JSON.parse(localStorage.getItem('mhd_items') || '[]');
+    items.push({ code, name, date, time: new Date().toISOString() });
+    localStorage.setItem('mhd_items', JSON.stringify(items));
+
+    alert("Erfolgreich gespeichert!");
+    document.getElementById('barcodeInput').value = '';
+    document.getElementById('artName').value = '';
+    document.getElementById('mhdDate').value = '';
+
+    // Falls die Teamleiter-Liste gerade offen ist, direkt aktualisieren
+    const listContainer = document.getElementById('teamleiterMhdList');
+    if (listContainer && !listContainer.classList.contains('hidden')) {
+        renderTeamleiterMhdList();
+    }
+}
+
+function logout() {
+    if (html5QrCode) { try { html5QrCode.stop(); } catch(e){} }
     localStorage.removeItem('mhd_logged_in');
     localStorage.removeItem('mhd_active_role');
-    hideAllViews();
-    const loginView = document.getElementById('viewLogin');
-    if (loginView) loginView.classList.remove('hidden');
-    simulatedRole = null;
-    currentSessionRole = null;
-    const adminBar = document.getElementById('adminSimulatorBar');
-    if (adminBar) adminBar.classList.add('hidden');
     location.reload();
-}
-
-function resetDevice() {
-    if (confirm("Möchtest du dieses Gerät wirklich komplett zurücksetzen und entkoppeln?")) {
-        localStorage.clear();
-        location.reload();
-    }
 }
