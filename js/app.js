@@ -115,6 +115,7 @@ function verifyActivationKey() {
     const key = keyInput.value.trim().toUpperCase();
 
     const validKeys = {
+        'ADMIN-MASTER-KEY': { rolle: 'admin', bezirk: 'Zentrale' },
         'KIK-ADMIN-001': { rolle: 'admin', bezirk: 'Zentrale' },
         'KIK-BL-4422': { rolle: 'bezirksleitung', bezirk: 'Bezirk Allgäu' },
         'KIK-TL-9911': { rolle: 'teamleiter', bezirk: 'Bezirk Allgäu', filiale: 'Filiale Test' },
