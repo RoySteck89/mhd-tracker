@@ -4,11 +4,18 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function verifyActivationKey(key) {
+    const cleanKey = key ? key.trim() : '';
+
+    // Sofortiger Bypass für deinen Master-Key
+    if (cleanKey.toUpperCase() === 'ADMIN-MASTER-KEY') {
+        return true;
+    }
+
     try {
         const { data, error } = await _supabase
             .from('activations')
             .select('*')
-            .eq('activation_key', key)
+            .eq('activation_key', cleanKey)
             .eq('is_active', true)
             .single();
 
