@@ -15,15 +15,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function showAuthView() {
-    document.getElementById('auth-section').classList.remove('hidden');
-    document.getElementById('tracker-section').classList.add('hidden');
-    document.getElementById('status-bar').textContent = 'Nicht aktiviert';
+    const authSec = document.getElementById('auth-section');
+    const trackSec = document.getElementById('tracker-section');
+    const status = document.getElementById('status-bar');
+    
+    if (authSec) authSec.classList.remove('hidden');
+    if (trackSec) trackSec.classList.add('hidden');
+    if (status) status.textContent = 'Nicht aktiviert';
 }
 
 function showTrackerView() {
-    document.getElementById('auth-section').classList.add('hidden');
-    document.getElementById('tracker-section').classList.remove('hidden');
-    document.getElementById('status-bar').textContent = 'Aktiviert & Verbunden';
+    const authSec = document.getElementById('auth-section');
+    const trackSec = document.getElementById('tracker-section');
+    const status = document.getElementById('status-bar');
+
+    if (authSec) authSec.classList.add('hidden');
+    if (trackSec) trackSec.classList.remove('hidden');
+    if (status) status.textContent = 'Aktiviert & Verbunden';
     loadMhdList();
 }
 
@@ -74,13 +82,15 @@ if (mhdForm) {
 
 async function loadMhdList() {
     const mhdList = document.getElementById('mhd-list');
+    if (!mhdList) return;
+    
     mhdList.innerHTML = '<p>Lade Artikel...</p>';
 
     const activationKey = localStorage.getItem('mhd_activation_key');
     const items = await fetchMhdItems(activationKey);
 
     if (!items || items.length === 0) {
-        mhdList.innerHTML = '<p>Keine aktiven MHD-Einträge vorhanden.</p>';
+        mhdList.innerHTML = '<p style="opacity: 0.7;">Keine aktiven MHD-Einträge vorhanden.</p>';
         return;
     }
 
@@ -89,10 +99,10 @@ async function loadMhdList() {
     items.forEach(item => {
         const itemEl = document.createElement('div');
         itemEl.className = `mhd-item ${getUrgencyClass(item.mhd_date)}`;
+        itemEl.style.cssText = "background: rgba(255,255,255,0.05); padding: 12px; margin-bottom: 8px; border-radius: 6px; border-left: 5px solid var(--primary-color);";
         itemEl.innerHTML = `
             <strong>${item.article_name}</strong><br>
-            Barcode: ${item.barcode}<br>
-            MHD: <strong>${item.mhd_date}</strong>
+            <small>Barcode: ${item.barcode} | MHD: <strong>${item.mhd_date}</strong></small>
         `;
         mhdList.appendChild(itemEl);
     });
@@ -151,10 +161,15 @@ function stopScanner() {
     if (html5QrCode && html5QrCode.isScanning) {
         html5QrCode.stop().then(() => {
             readerDiv.classList.add('hidden');
-            scanBtn.textContent = '📷 Scannen';
+            if (scanBtn) scanBtn.textContent = '📷 Scannen';
         }).catch(err => console.error("Fehler beim Stoppen des Scanners:", err));
     } else {
-        readerDiv.classList.add('hidden');
-        scanBtn.textContent = '📷 Scannen';
+        if (readerDiv) readerDiv.classList.add('hidden');
+        if (scanBtn) scanBtn.textContent = '📷 Scannen';
     }
+}
+
+function logoutApp() {
+    localStorage.removeItem('mhd_activation_key');
+    location.reload();
 }
