@@ -1,7 +1,16 @@
 body { font-family: Arial, sans-serif; background: #f4f7f6; margin: 0; padding: 20px; color: #333; }
 .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
 h1, h2 { color: #2c3e50; }
-input, select, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+input, select, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+
+/* Speziell für Datumsfelder auf dem Handy, damit sie nicht komprimiert wirken */
+input[type="date"] {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: #fff;
+    min-height: 48px; /* Perfekte Daumen-Größe fürs Handy */
+}
+
 button { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
 button:hover { background: #0056b3; }
 .admin-bar { background: #343a40; color: white; padding: 10px; border-radius: 4px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
