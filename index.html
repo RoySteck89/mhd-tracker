@@ -7,6 +7,11 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#00f5d4">
+    
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- HTML5 QR Code Scanner CDN (Genau wie in der Netlify-Version) -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body class="theme-glitter">
 
@@ -14,7 +19,7 @@
         <h1>MHD-Tracker</h1>
         <div id="statusBadge">Status: Wird geladen...</div>
 
-        <!-- SIMULATOR BAR (FÜR ADMIN/TEST) -->
+        <!-- SIMULATOR BAR -->
         <div class="admin-bar" id="adminBar" style="display:none;">
             <strong>👑 Admin-Simulator:</strong>
             <div>
@@ -29,7 +34,7 @@
         <div id="viewSetupKey" class="hidden">
             <h2>App-Aktivierung</h2>
             <p>Bitte gib deinen erhaltenen Aktivierungs-Key ein:</p>
-            <input type="text" id="activationKeyInput" placeholder="z. B. ADMIN-MASTER-KEY oder Filial-Key">
+            <input type="text" id="activationKeyInput" placeholder="z. B. ADMIN-MASTER-KEY oder Key">
             <button onclick="verifyAndActivateKey()">Key überprüfen</button>
         </div>
 
@@ -39,8 +44,7 @@
         </div>
     </div>
 
-    <!-- Supabase SDK & App Logik -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- App Logik -->
     <script src="js/supabase.js"></script>
     <script src="js/app.js"></script>
 </body>

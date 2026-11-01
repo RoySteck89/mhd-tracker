@@ -1,5 +1,6 @@
 let currentSessionRole = localStorage.getItem('mhd_active_role') || 'mitarbeiter';
 let currentKey = localStorage.getItem('mhd_activation_key') || null;
+let html5QrCode = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     checkInitialState();
@@ -72,6 +73,7 @@ function setSimulatedRole(role) {
 }
 
 function loadDashboard(role) {
+    stopScanner();
     showView('viewDashboard');
     setStatus(`Angemeldet als Rolle: ${role.toUpperCase()}`);
 
@@ -155,13 +157,9 @@ function loadDashboard(role) {
             <div class="card">
                 <h3>Barcode Scanner & Artikelerfassung</h3>
                 
-                <!-- Einfacher, nativer Kamera-Scan-Button (öffnete direkt die Rückkamera) -->
-                <div style="margin-bottom: 15px;">
-                    <label for="cameraScannerInput" style="display: block; background: #0ea5e9; color: white; text-align: center; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                        📷 Rückkamera zum Scannen öffnen
-                    </label>
-                    <input type="file" id="cameraScannerInput" accept="image/*" capture="environment" style="display:none;" onchange="handleBarCodeImage(this)">
-                </div>
+                <!-- Exakter Reader-Container für den Scanner -->
+                <div id="reader" style="width: 100%; margin-bottom: 10px;"></div>
+                <button type="button" onclick="startScanner()" style="background-color: #0ea5e9; margin-bottom: 15px;">📷 Scanner starten</button>
                 
                 <label for="barcodeInput">Barcode:</label>
                 <input type="text" id="barcodeInput" placeholder="Barcode scannen oder eingeben...">
@@ -186,13 +184,46 @@ function loadDashboard(role) {
     dashContent.innerHTML = mainContentHtml + logoutHtml;
 }
 
-// Simulierter Barcode-Empfang über das aufgenommene Foto oder manuelle Eingabe
-function handleBarCodeImage(input) {
-    if (input.files && input.files[0]) {
-        // Da das Foto gemacht wurde, setzen wir hier einen Platzhalter oder simulieren den Scan
-        // Du kannst den Barcode natürlich auch direkt eintippen
-        document.getElementById('barcodeInput').value = "4006381333931"; // Beispiel Barcode
-        alert("Foto aufgenommen! Barcode wurde übernommen.");
+function startScanner() {
+    if (typeof Html5QrCode === 'undefined') {
+        alert("Scanner-Bibliothek wird noch geladen...");
+        return;
+    }
+
+    const readerEl = document.getElementById('reader');
+    if (!readerEl) return;
+
+    try {
+        if (!html5QrCode) {
+            html5QrCode = new Html5QrCode("reader");
+        }
+        
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 150 } },
+            (decodedText) => {
+                document.getElementById('barcodeInput').value = decodedText;
+                stopScanner();
+                alert("Erfolgreich gescannt: " + decodedText);
+            },
+            (errorMessage) => {}
+        ).catch((err) => {
+            alert("Kamera-Fehler: " + err);
+        });
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function stopScanner() {
+    if (html5QrCode) {
+        try {
+            if (html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                }).catch(() => {});
+            }
+        } catch (e) {}
     }
 }
 
@@ -218,6 +249,7 @@ async function saveMhdItemHandler() {
 }
 
 function logoutApp() {
+    stopScanner();
     localStorage.removeItem('mhd_activation_key');
     localStorage.removeItem('mhd_active_role');
     location.reload();
