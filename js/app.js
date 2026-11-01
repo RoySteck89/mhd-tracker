@@ -157,7 +157,7 @@ function loadDashboard(role) {
             <div class="card">
                 <h3>Barcode Scanner & Artikelerfassung</h3>
                 
-                <!-- Schmaler, eleganter Scanner-Streifen -->
+                <!-- Schmaler Live-Scanner Streifen -->
                 <div id="interactive" class="viewport" style="width: 100%; height: 160px; overflow: hidden; position: relative; border-radius: 8px; border: 2px solid #00f5d4; margin-bottom: 12px; background: #000;"></div>
                 
                 <button type="button" onclick="startFastScanner()" style="background-color: #0ea5e9; margin-bottom: 15px;">📷 Scanner starten</button>
@@ -183,8 +183,7 @@ function loadDashboard(role) {
     `;
 
     dashContent.innerHTML = mainContentHtml + logoutHtml;
-    
-    // Automatisch starten für schnelle Erfassung
+
     if (role === 'mitarbeiter' || role === 'teamleiter') {
         setTimeout(() => startFastScanner(), 300);
     }
@@ -208,16 +207,27 @@ function startFastScanner() {
             target: targetEl,
             constraints: {
                 facingMode: "environment",
-                width: { min: 640 },
-                height: { min: 480 }
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
             }
         },
+        locator: {
+            patchSize: "medium",
+            halfSample: true
+        },
+        numOfWorkers: navigator.hardwareConcurrency || 4,
         decoder: {
-            readers: ["code_128_reader", "ean_reader", "ean_8_reader", "code_39_reader"]
-        }
+            readers: [
+                "ean_reader",
+                "ean_8_reader",
+                "code_128_reader",
+                "code_39_reader"
+            ]
+        },
+        locate: true
     }, function(err) {
         if (err) {
-            console.error(err);
+            console.error("Quagga Init Fehler:", err);
             return;
         }
         Quagga.start();
@@ -230,9 +240,10 @@ function startFastScanner() {
             const code = result.codeResult.code;
             document.getElementById('barcodeInput').value = code;
             
-            // Kurzes Signal-Feedback & Stop
-            stopScanner();
             if (navigator.vibrate) navigator.vibrate(100);
+            
+            stopScanner();
+            alert("Barcode erfolgreich erkannt: " + code);
         }
     });
 }
@@ -260,7 +271,6 @@ async function saveMhdItemHandler() {
         document.getElementById('barcodeInput').value = '';
         document.getElementById('artName').value = '';
         document.getElementById('mhdDate').value = '';
-        // Nach dem Speichern Scanner sofort wieder aktivieren
         startFastScanner();
     } else {
         alert("Fehler beim Speichern zur Datenbank.");
