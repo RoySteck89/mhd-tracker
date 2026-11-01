@@ -1,5 +1,5 @@
 let currentUser = JSON.parse(localStorage.getItem('mhd_user')) || null;
-let simulatedRole = null;
+let currentSessionRole = localStorage.getItem('mhd_active_role') || null;
 let pendingKeyData = null;
 let html5QrCode = null;
 
@@ -12,8 +12,15 @@ function checkInitialState() {
         document.getElementById('viewSetupKey').classList.remove('hidden');
         document.getElementById('statusBadge').innerText = "Status: Nicht aktiviert";
     } else {
-        document.getElementById('viewLogin').classList.remove('hidden');
-        document.getElementById('statusBadge').innerText = `Gekoppelt als: ${currentUser.name} (${currentUser.rolle})`;
+        // Prüfen, ob das Gerät bereits eingeloggt war oder ob der Login-Screen gezeigt werden soll
+        const isLoggedIn = localStorage.getItem('mhd_logged_in') === 'true';
+        if (isLoggedIn && currentSessionRole) {
+            // Direkt im Dashboard bleiben beim Neuladen!
+            loadDashboard(currentSessionRole);
+        } else {
+            document.getElementById('viewLogin').classList.remove('hidden');
+            document.getElementById('statusBadge').innerText = `Gekoppelt als: ${currentUser.name} (${currentUser.rolle})`;
+        }
     }
 }
 
@@ -116,6 +123,8 @@ function loginWithPin() {
     const kassenpin = document.getElementById('loginPin').value.trim();
 
     if (currentUser && kassennummer === currentUser.kassennummer && kassenpin === currentUser.kassenpin) {
+        // Dauerhaft eingeloggt speichern
+        localStorage.setItem('mhd_logged_in', 'true');
         loadDashboard(currentUser.rolle);
     } else {
         alert("Falsche Kassennummer oder PIN!");
@@ -126,20 +135,25 @@ function loginWithPin() {
 async function loadDashboard(role) {
     await stopScanner();
 
+    // Aktivierte Rolle in Session speichern gegen Logout bei Neuladen
+    currentSessionRole = simulatedRole || role;
+    localStorage.setItem('mhd_active_role', currentSessionRole);
+    localStorage.setItem('mhd_logged_in', 'true');
+
     document.getElementById('viewLogin').classList.add('hidden');
     document.getElementById('viewSetupKey').classList.add('hidden');
     document.getElementById('viewSetupDetails').classList.add('hidden');
     document.getElementById('viewDashboard').classList.remove('hidden');
+    document.getElementById('statusBadge').innerText = `Angemeldet als: ${currentUser.name} (${currentSessionRole})`;
 
     if (currentUser.rolle === 'admin' || simulatedRole) {
         document.getElementById('adminSimulatorBar').classList.remove('hidden');
     }
 
-    const activeRole = simulatedRole || role;
     const titleEl = document.getElementById('dashTitle');
     const contentEl = document.getElementById('dashContent');
 
-    if (activeRole === 'admin') {
+    if (currentSessionRole === 'admin') {
         titleEl.innerText = "👑 Super-Admin Steuerung";
         contentEl.innerHTML = `
             <div class="card">
@@ -178,10 +192,10 @@ async function loadDashboard(role) {
         renderFilialAssignments();
         createRandomKeyInput();
 
-    } else if (activeRole === 'bezirksleiter') {
+    } else if (currentSessionRole === 'bezirksleiter') {
         titleEl.innerText = "🏢 Bezirksleitungs-Ansicht";
         contentEl.innerHTML = `<div class="card"><p>Übersicht über alle Filialen im Bezirk & Teamleiter-Verwaltung.</p></div>`;
-    } else if (activeRole === 'teamleiter') {
+    } else if (currentSessionRole === 'teamleiter') {
         titleEl.innerText = "🏪 Teamleiter-Ansicht (Filiale & Scanner)";
         contentEl.innerHTML = `
             <div class="card" style="background: #e2e8f0; margin-bottom: 15px;">
@@ -221,7 +235,7 @@ async function loadDashboard(role) {
             createEmployeeKeyInput();
         }, 300);
 
-    } else if (activeRole === 'mitarbeiter') {
+    } else if (currentSessionRole === 'mitarbeiter') {
         titleEl.innerText = "📱 Mitarbeiter Scan-Ansicht";
         contentEl.innerHTML = `
             <div class="card">
@@ -252,7 +266,7 @@ async function loadDashboard(role) {
     }
 }
 
-// AUTOMATISCHER SCANNER OHNE EXTRA BUTTONS
+// AUTOMATISCHER SCANNER
 async function initScanner() {
     const readerEl = document.getElementById('reader');
     if (readerEl && !html5QrCode) {
@@ -269,7 +283,7 @@ async function initScanner() {
                 (errorMessage) => {}
             );
         } catch (err) {
-            console.warn("Kamera-Start fehlgeschlagen / Berechtigung gefordert:", err);
+            console.warn("Kamera-Start fehlgeschlagen:", err);
         }
     }
 }
@@ -341,7 +355,6 @@ async function renderFilialAssignments() {
     listEl.innerHTML = html;
 }
 
-// ADMIN: FILIALE EINEM ANDEREN BEZIRK ZUWEISEN
 async function updateFilialeBezirk(filialeId, bezirkId) {
     const newBezirkId = bezirkId ? parseInt(bezirkId) : null;
     const { error } = await _supabase
@@ -424,7 +437,7 @@ async function generateKey() {
     }
 }
 
-// MITARBEITER-KEY STRUKTUR: MHD-[Filialname]-[Zufallszahl]
+// MITARBEITER-KEY STRUKTUR
 async function createEmployeeKeyInput() {
     let filialName = "Filiale";
     
@@ -470,7 +483,6 @@ async function generateEmployeeKey() {
     }
 }
 
-// ADMIN-FUNKTION: KEYS ANZEIGEN
 async function renderKeyList() {
     const listEl = document.getElementById('keyList');
     if (!listEl) return;
@@ -504,17 +516,22 @@ async function switchView(role) {
     await loadDashboard(role);
 }
 
-async function logoutDevice() {
-    await stopScanner();
+function logoutDevice() {
+    stopScanner();
+    // Kompletter Logout, löscht auch den Session-Status
+    localStorage.removeItem('mhd_logged_in');
+    localStorage.removeItem('mhd_active_role');
     document.getElementById('viewDashboard').classList.add('hidden');
     document.getElementById('viewLogin').classList.remove('hidden');
     simulatedRole = null;
+    currentSessionRole = null;
     document.getElementById('adminSimulatorBar').classList.add('hidden');
+    location.reload();
 }
 
 function resetDevice() {
-    if (confirm("Möchtest du dieses Gerät wirklich zurücksetzen?")) {
-        localStorage.removeItem('mhd_user');
+    if (confirm("Möchtest du dieses Gerät wirklich komplett zurücksetzen und entkoppeln?")) {
+        localStorage.clear();
         location.reload();
     }
 }
