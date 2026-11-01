@@ -1,6 +1,7 @@
 let currentUser = JSON.parse(localStorage.getItem('mhd_user')) || null;
 let simulatedRole = null;
 let pendingKeyData = null;
+let html5QrcodeScanner = null;
 
 document.addEventListener("DOMContentLoaded", () => {
     checkInitialState();
@@ -24,7 +25,7 @@ async function verifyKeyStep1() {
         return;
     }
 
-    const { data: keyData, error } = await supabase
+    const { data: keyData, error } = await _supabase
         .from('keys')
         .select('*')
         .eq('key_code', keyCode)
@@ -45,18 +46,18 @@ async function verifyKeyStep1() {
     const extraInput = document.getElementById('setupExtraName');
 
     if (keyData.rolle === 'admin') {
-        infoText.innerText = "✓ Erkannt: Super-Admin-Key";
+        infoText.innerText = "👑 Erkannt: Super-Admin Schlüssel";
         extraContainer.classList.add('hidden');
     } else if (keyData.rolle === 'bezirksleiter') {
-        infoText.innerText = "✓ Erkannt: Bezirksleitung-Key";
+        infoText.innerText = "🏢 Erkannt: Bezirksleitung Key";
         extraContainer.classList.remove('hidden');
-        extraInput.placeholder = "Name des Bezirks (z.B. Allgäu)";
+        extraInput.placeholder = "Name des neuen Bezirks";
     } else if (keyData.rolle === 'teamleiter') {
-        infoText.innerText = "✓ Erkannt: Teamleiter-Key";
+        infoText.innerText = "🏪 Erkannt: Teamleiter Key";
         extraContainer.classList.remove('hidden');
-        extraInput.placeholder = "Name der Filiale (z.B. Filiale Dietmannsried)";
+        extraInput.placeholder = "Name der neuen Filiale";
     } else if (keyData.rolle === 'mitarbeiter') {
-        infoText.innerText = "✓ Erkannt: Mitarbeiter-Key";
+        infoText.innerText = "📱 Erkannt: Mitarbeiter Key";
         extraContainer.classList.add('hidden');
     }
 }
@@ -68,17 +69,27 @@ async function registerDeviceStep2() {
     const kassenpin = document.getElementById('setupPin').value.trim();
     const extraValue = document.getElementById('setupExtraName').value.trim();
 
-    if (!name || !kassennummer || !kassenpin || 
-        ((pendingKeyData.rolle === 'bezirksleiter' || pendingKeyData.rolle === 'teamleiter') && !extraValue)) {
-        alert("Bitte fülle alle erforderlichen Felder aus!");
+    if (!name || !kassennummer || !kassenpin) {
+        alert("Bitte fülle alle Grundfelder aus!");
         return;
     }
 
-    const { data: userData, error: userError } = await supabase
+    let bezirkId = pendingKeyData.bezirk_id || null;
+    let filialeId = pendingKeyData.filiale_id || null;
+
+    if (pendingKeyData.rolle === 'bezirksleiter' && extraValue) {
+        const { data: bData } = await _supabase.from('bezirke').insert([{ name: extraValue }]).select().single();
+        if (bData) bezirkId = bData.id;
+    } else if (pendingKeyData.rolle === 'teamleiter' && extraValue) {
+        const { data: fData } = await _supabase.from('filialen').insert([{ bezirk_id: bezirkId, name: extraValue }]).select().single();
+        if (fData) filialeId = fData.id;
+    }
+
+    const { data: userData, error: userError } = await _supabase
         .from('nutzer')
         .insert([{
-            bezirk_id: pendingKeyData.bezirk_id,
-            filiale_id: pendingKeyData.filiale_id,
+            bezirk_id: bezirkId,
+            filiale_id: filialeId,
             name: name,
             kassennummer: kassennummer,
             kassenpin: kassenpin,
@@ -95,7 +106,7 @@ async function registerDeviceStep2() {
     currentUser = userData;
     localStorage.setItem('mhd_user', JSON.stringify(currentUser));
 
-    alert("Gerät erfolgreich aktiviert und verknüpft!");
+    alert("Gerät erfolgreich aktiviert!");
     location.reload();
 }
 
@@ -104,15 +115,20 @@ function loginWithPin() {
     const kassennummer = document.getElementById('loginKasse').value.trim();
     const kassenpin = document.getElementById('loginPin').value.trim();
 
-    if (kassennummer === currentUser.kassennummer && kassenpin === currentUser.kassenpin) {
+    if (currentUser && kassennummer === currentUser.kassennummer && kassenpin === currentUser.kassenpin) {
         loadDashboard(currentUser.rolle);
     } else {
         alert("Falsche Kassennummer oder PIN!");
     }
 }
 
-// DASHBOARD LADEN JE NACH ROLLE
-function loadDashboard(role) {
+// DASHBOARD LADEN & ROLLE ANZEIGEN
+async function loadDashboard(role) {
+    if (html5QrcodeScanner) {
+        try { await html5QrcodeScanner.clear(); } catch(e) {}
+        html5QrcodeScanner = null;
+    }
+
     document.getElementById('viewLogin').classList.add('hidden');
     document.getElementById('viewSetupKey').classList.add('hidden');
     document.getElementById('viewSetupDetails').classList.add('hidden');
@@ -127,28 +143,357 @@ function loadDashboard(role) {
     const contentEl = document.getElementById('dashContent');
 
     if (activeRole === 'admin') {
-        titleEl.innerText = "👑 Super-Admin Dashboard";
-        contentEl.innerHTML = `<p>Gesamtübersicht über alle Bezirke und Haupt-Keys.</p>`;
+        titleEl.innerText = "👑 Super-Admin Steuerung";
+        contentEl.innerHTML = `
+            <!-- 1. BEZIRKE ANLEGEN -->
+            <div class="card">
+                <h3>🏢 Neuer Bezirk anlegen</h3>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="newBezirkName" placeholder="Bezirk Name (z.B. Allgäu)" style="margin: 0; flex: 1;">
+                    <button onclick="createBezirk()" style="width: auto; margin: 0; background: #28a745;">Erstellen</button>
+                </div>
+            </div>
+
+            <!-- 2. FILIALEN BEZIRKEN ZUORDNEN -->
+            <div class="card">
+                <h3>🏪 Filialen & Bezirks-Zuordnung</h3>
+                <div id="filialAssignmentList">Lade Filialen...</div>
+            </div>
+
+            <!-- 3. KEYS GENERIEREN -->
+            <div class="card">
+                <h3>🔑 Aktivierungs-Key generieren</h3>
+                <select id="newKeyRole">
+                    <option value="teamleiter">Teamleiter Key (für Filiale)</option>
+                    <option value="bezirksleiter">Bezirksleiter Key</option>
+                    <option value="mitarbeiter">Mitarbeiter Key</option>
+                </select>
+                <div style="display: flex; gap: 8px; margin: 8px 0;">
+                    <input type="text" id="newKeyCode" placeholder="Zufalls-Key erzeugen..." style="margin: 0; flex: 1;">
+                    <button type="button" onclick="createRandomKeyInput()" style="width: auto; margin: 0; background: #6c757d;">🎲 Zufall</button>
+                </div>
+                <button onclick="generateKey()" style="margin-top: 10px;">Key in Datenbank speichern</button>
+            </div>
+
+            <!-- 4. AKTIVE KEYS ANZEIGEN -->
+            <div class="card">
+                <h3>📋 Aktive Keys & Verwaltung</h3>
+                <div id="keyList">Lade Keys...</div>
+            </div>
+        `;
+        renderKeyList();
+        renderFilialAssignments();
+        createRandomKeyInput();
+
     } else if (activeRole === 'bezirksleiter') {
-        titleEl.innerText = "🏢 Bezirksleitungs-Dashboard";
-        contentEl.innerHTML = `<p>Übersicht aller Filialen im Bezirk und Teamleiter-Keys.</p>`;
+        titleEl.innerText = "🏢 Bezirksleitungs-Ansicht";
+        contentEl.innerHTML = `<div class="card"><p>Übersicht über alle Filialen im Bezirk & Teamleiter-Verwaltung.</p></div>`;
     } else if (activeRole === 'teamleiter') {
-        titleEl.innerText = "🏪 Teamleiter-Dashboard (Filiale)";
-        contentEl.innerHTML = `<p>Filial-Übersicht, Mitarbeiter-Keys verwalten und MHD-Kontrolle.</p>`;
+        titleEl.innerText = "🏪 Teamleiter-Ansicht (Filiale & Scanner)";
+        contentEl.innerHTML = `
+            <div class="card" style="background: #e2e8f0; margin-bottom: 15px;">
+                <h3>Mitarbeiter-Key für deine Filiale erstellen</h3>
+                <p style="font-size: 13px; color: #555;">Dieser Key dient allen Mitarbeitern deiner Filiale zur Geräteaktivierung.</p>
+                <div style="display: flex; gap: 8px; margin: 8px 0;">
+                    <input type="text" id="employeeKeyCode" placeholder="Generiere Key..." style="margin: 0; flex: 1;">
+                    <button type="button" onclick="createEmployeeKeyInput()" style="width: auto; margin: 0; background: #6c757d;">🎲 Neu laden</button>
+                </div>
+                <button onclick="generateEmployeeKey()" style="margin-top: 5px; background: #28a745;">Diesen Filial-Key freigeben</button>
+            </div>
+
+            <div class="card">
+                <h3>Barcode Scanner & Artikelerfassung</h3>
+                <div id="reader" style="width: 100%; background: #000; border-radius: 4px; overflow: hidden;"></div>
+                
+                <div style="margin-top: 15px;">
+                    <label><strong>Gescannter / Manueller Barcode:</strong></label>
+                    <input type="text" id="scannedBarcode" placeholder="Barcode hier eintragen oder scannen...">
+                </div>
+                
+                <div style="margin-top: 10px;">
+                    <label><strong>Artikelbezeichnung:</strong></label>
+                    <input type="text" id="articleName" placeholder="z.B. Milch 1L">
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <label><strong>MHD (Mindesthaltbarkeitsdatum):</strong></label>
+                    <input type="date" id="articleMhd">
+                </div>
+
+                <button onclick="saveMhdItem()" style="margin-top: 15px; background: #28a745;">Artikel speichern</button>
+            </div>
+        `;
+        setTimeout(() => {
+            initScanner();
+            createEmployeeKeyInput();
+        }, 300);
+
     } else if (activeRole === 'mitarbeiter') {
-        titleEl.innerText = "📱 Mitarbeiter Scan-Maske";
-        contentEl.innerHTML = `<p>Artikel scannen und fällige MHD-Artikel prüfen.</p>
-                               <input type="text" placeholder="Barcode scannen / eingeben">
-                               <button>Artikel speichern</button>`;
+        titleEl.innerText = "📱 Mitarbeiter Scan-Ansicht";
+        contentEl.innerHTML = `
+            <div class="card">
+                <h3>Barcode Scanner</h3>
+                <div id="reader" style="width: 100%; background: #000; border-radius: 4px; overflow: hidden;"></div>
+                
+                <div style="margin-top: 15px;">
+                    <label><strong>Gescannter / Manueller Barcode:</strong></label>
+                    <input type="text" id="scannedBarcode" placeholder="Barcode hier eintragen oder scannen...">
+                </div>
+                
+                <div style="margin-top: 10px;">
+                    <label><strong>Artikelbezeichnung:</strong></label>
+                    <input type="text" id="articleName" placeholder="z.B. Milch 1L">
+                </div>
+
+                <div style="margin-top: 10px;">
+                    <label><strong>MHD (Mindesthaltbarkeitsdatum):</strong></label>
+                    <input type="date" id="articleMhd">
+                </div>
+
+                <button onclick="saveMhdItem()" style="margin-top: 15px; background: #28a745;">Artikel speichern</button>
+            </div>
+        `;
+        setTimeout(() => {
+            initScanner();
+        }, 300);
     }
 }
 
+// ADMIN: NEUEN BEZIRK ERSTELLEN
+async function createBezirk() {
+    const name = document.getElementById('newBezirkName').value.trim();
+    if (!name) {
+        alert("Bitte einen Bezirksnamen eingeben!");
+        return;
+    }
+
+    const { error } = await _supabase.from('bezirke').insert([{ name: name }]);
+    if (error) {
+        alert("Fehler beim Erstellen: " + error.message);
+    } else {
+        alert(`Bezirk "${name}" erfolgreich erstellt!`);
+        document.getElementById('newBezirkName').value = '';
+        renderFilialAssignments();
+    }
+}
+
+// ADMIN: FILIALEN UND BEREICHS-ZUORDNUNGEN ANZEIGEN & ÄNDERN
+async function renderFilialAssignments() {
+    const listEl = document.getElementById('filialAssignmentList');
+    if (!listEl) return;
+
+    const { data: filialen } = await _supabase.from('filialen').select('*');
+    const { data: bezirke } = await _supabase.from('bezirke').select('*');
+
+    if (!filialen || filialen.length === 0) {
+        listEl.innerHTML = "<p style='font-size: 13px; color: #666;'>Noch keine Filialen registriert.</p>";
+        return;
+    }
+
+    let html = "<div style='display: flex; flex-direction: column; gap: 10px;'>";
+    filialen.forEach(f => {
+        let options = `<option value="">-- Kein Bezirk zugewiesen --</option>`;
+        bezirke.forEach(b => {
+            const selected = f.bezirk_id === b.id ? 'selected' : '';
+            options += `<option value="${b.id}" ${selected}>${b.name}</option>`;
+        });
+
+        html += `
+            <div style="background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
+                <strong>🏪 ${f.name}</strong>
+                <div style="margin-top: 5px;">
+                    <label style="font-size: 12px; color: #555;">Bezirk zuweisen:</label>
+                    <select onchange="updateFilialeBezirk(${f.id}, this.value)" style="margin: 3px 0; padding: 6px;">
+                        ${options}
+                    </select>
+                </div>
+            </div>
+        `;
+    });
+    html += "</div>";
+    listEl.innerHTML = html;
+}
+
+// ADMIN: FILIALE EINEM ANDEREN BEZIRK ZUWEISEN
+async function updateFilialeBezirk(filialeId, bezirkId) {
+    const newBezirkId = bezirkId ? parseInt(bezirkId) : null;
+    const { error } = await _supabase
+        .from('filialen')
+        .update({ bezirk_id: newBezirkId })
+        .eq('id', filialeId);
+
+    if (error) {
+        alert("Fehler beim Aktualisieren: " + error.message);
+    } else {
+        alert("Zuordnung erfolgreich aktualisiert!");
+    }
+}
+
+// KAMERA SCANNER INITIALISIEREN
+function initScanner() {
+    if (document.getElementById('reader') && !html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", { fps: 10, qrbox: 250 }, false);
+        html5QrcodeScanner.render((decodedText) => {
+            document.getElementById('scannedBarcode').value = decodedText;
+        }, (errorMessage) => {
+            // Fehler im Hintergrund ignorieren
+        });
+    }
+}
+
+// ARTIKEL SPEICHERN
+async function saveMhdItem() {
+    const barcode = document.getElementById('scannedBarcode').value.trim();
+    const name = document.getElementById('articleName').value.trim();
+    const mhd = document.getElementById('articleMhd').value;
+
+    if (!barcode || !name || !mhd) {
+        alert("Bitte Barcode, Artikelbezeichnung und MHD ausfüllen!");
+        return;
+    }
+
+    const { error } = await _supabase.from('artikel').insert([{
+        filiale_id: currentUser.filiale_id,
+        erfasst_von: currentUser.id,
+        barcode: barcode,
+        bezeichnung: name,
+        mhd: mhd,
+        status: 'offen'
+    }]);
+
+    if (error) {
+        alert("Fehler beim Speichern: " + error.message);
+    } else {
+        alert("Artikel erfolgreich gespeichert!");
+        document.getElementById('scannedBarcode').value = '';
+        document.getElementById('articleName').value = '';
+        document.getElementById('articleMhd').value = '';
+    }
+}
+
+// ZUFALLS-KEY FÜR ADMIN
+function generateRandomCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'MHD-';
+    for (let i = 0; i < 8; i++) {
+        if (i === 4) code += '-';
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+function createRandomKeyInput() {
+    const input = document.getElementById('newKeyCode');
+    if (input) {
+        input.value = generateRandomCode();
+    }
+}
+
+async function generateKey() {
+    const role = document.getElementById('newKeyRole').value;
+    const code = document.getElementById('newKeyCode').value.trim();
+
+    if (!code) {
+        alert("Bitte einen Key-Code eingeben oder generieren!");
+        return;
+    }
+
+    const { error } = await _supabase.from('keys').insert([{ key_code: code, rolle: role }]);
+
+    if (error) {
+        alert("Fehler beim Erstellen: " + error.message);
+    } else {
+        alert(`Key "${code}" (${role}) erfolgreich erstellt!`);
+        renderKeyList();
+        createRandomKeyInput();
+    }
+}
+
+// MITARBEITER-KEY STRUKTUR: MHD-[Filialname]-[Zufallszahl]
+async function createEmployeeKeyInput() {
+    let filialName = "Filiale";
+    
+    if (currentUser && currentUser.filiale_id) {
+        const { data: fData } = await _supabase
+            .from('filialen')
+            .select('name')
+            .eq('id', currentUser.filiale_id)
+            .single();
+            
+        if (fData && fData.name) {
+            filialName = fData.name.replace(/\s+/g, '-');
+        }
+    }
+
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const input = document.getElementById('employeeKeyCode');
+    if (input) {
+        input.value = `MHD-${filialName}-${randomNum}`;
+    }
+}
+
+async function generateEmployeeKey() {
+    const code = document.getElementById('employeeKeyCode').value.trim();
+    if (!code) {
+        alert("Bitte Key eingeben!");
+        return;
+    }
+
+    const { error } = await _supabase.from('keys').insert([{
+        key_code: code,
+        rolle: 'mitarbeiter',
+        bezirk_id: currentUser.bezirk_id,
+        filiale_id: currentUser.filiale_id,
+        is_active: true
+    }]);
+
+    if (error) {
+        alert("Fehler beim Erstellen (evtl. existiert dieser Key bereits): " + error.message);
+    } else {
+        alert(`Der Filial-Mitarbeiter-Key "${code}" ist jetzt aktiv und kann weitergegeben werden!`);
+        createEmployeeKeyInput();
+    }
+}
+
+// ADMIN-FUNKTION: KEYS ANZEIGEN
+async function renderKeyList() {
+    const listEl = document.getElementById('keyList');
+    if (!listEl) return;
+
+    const { data: keys, error } = await _supabase.from('keys').select('*').order('created_at', { ascending: false });
+    if (error || !keys) {
+        listEl.innerHTML = "<p>Keine Keys gefunden.</p>";
+        return;
+    }
+
+    let html = "<ul style='padding-left: 20px; margin: 0;'>";
+    keys.forEach(k => {
+        html += `<li style="margin-bottom: 6px;"><strong>${k.key_code}</strong> <span style="color: #666; font-size: 13px;">(${k.rolle})</span> – Status: ${k.is_active ? '✅ Aktiv' : '❌ Inaktiv'}</li>`;
+    });
+    html += "</ul>";
+    listEl.innerHTML = html;
+}
+
+// ADMIN SIMULATOR UMSCHALTER
 function switchView(role) {
     simulatedRole = role;
+    
+    ['admin', 'bezirksleiter', 'teamleiter', 'mitarbeiter'].forEach(r => {
+        const btn = document.getElementById(`btn-${r}`);
+        if (btn) {
+            if (r === role) btn.classList.add('active');
+            else btn.classList.remove('active');
+        }
+    });
+
     loadDashboard(role);
 }
 
 function logoutDevice() {
+    if (html5QrcodeScanner) {
+        try { html5QrcodeScanner.clear(); } catch(e) {}
+    }
     document.getElementById('viewDashboard').classList.add('hidden');
     document.getElementById('viewLogin').classList.remove('hidden');
     simulatedRole = null;

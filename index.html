@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="css/style.css">
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- HTML5 QR Code Scanner CDN -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 <body>
 
@@ -16,10 +18,10 @@
     <div id="adminSimulatorBar" class="admin-bar hidden">
         <span>👑 Admin-Simulator:</span>
         <div>
-            <button onclick="switchView('admin')" id-btn="admin">Admin</button>
-            <button onclick="switchView('bezirksleiter')" id-btn="bezirksleiter">Bezirksleitung</button>
-            <button onclick="switchView('teamleiter')" id-btn="teamleiter">Teamleiter</button>
-            <button onclick="switchView('mitarbeiter')" id-btn="mitarbeiter">Mitarbeiter</button>
+            <button onclick="switchView('admin')" id="btn-admin" class="active">Admin</button>
+            <button onclick="switchView('bezirksleiter')" id="btn-bezirksleiter">Bezirksleitung</button>
+            <button onclick="switchView('teamleiter')" id="btn-teamleiter">Teamleiter</button>
+            <button onclick="switchView('mitarbeiter')" id="btn-mitarbeiter">Mitarbeiter</button>
         </div>
     </div>
 
@@ -30,7 +32,7 @@
     <div id="viewSetupKey" class="hidden">
         <h2>Gerät aktivieren</h2>
         <p>Schritt 1 von 2: Aktivierungsschlüssel eingeben</p>
-        <input type="text" id="setupKey" placeholder="z.B. TEST-KEY-TEAMLEITER">
+        <input type="text" id="setupKey" placeholder="z.B. MHD-Dietmannsried-4821">
         <button onclick="verifyKeyStep1()">Key prüfen</button>
     </div>
 
@@ -39,31 +41,30 @@
         <h2>Gerät aktivieren</h2>
         <p id="roleInfoText" style="color: #28a745; font-weight: bold; margin-bottom: 15px;"></p>
         
-        <!-- Dynamisches Extra-Feld (z.B. für Filial- oder Bezirksname) -->
         <div id="extraFieldContainer" class="hidden">
             <input type="text" id="setupExtraName" placeholder="">
         </div>
 
-        <input type="text" id="setupName" placeholder="Dein Name (z.B. Anna Steck)">
-        <input type="text" id="setupKasse" placeholder="Kassennummer (z.B. 101)">
+        <input type="text" id="setupName" placeholder="Dein Name">
+        <input type="text" id="setupKasse" placeholder="Kassennummer">
         <input type="password" id="setupPin" placeholder="4-stellige Kassen-PIN" maxlength="4">
         <button onclick="registerDeviceStep2()">Aktivieren & Starten</button>
     </div>
 
-    <!-- ANSICHT 2: SCHNELL-LOGIN (KASSENNUMMER + PIN) -->
+    <!-- ANSICHT 2: SCHNELL-LOGIN -->
     <div id="viewLogin" class="hidden">
         <h2>Schicht-Login</h2>
-        <p>Schnell-Anmeldung für dieses Gerät:</p>
+        <p>Anmeldung für dieses Gerät:</p>
         <input type="text" id="loginKasse" placeholder="Kassennummer">
         <input type="password" id="loginPin" placeholder="Kassen-PIN" maxlength="4">
         <button onclick="loginWithPin()">Einloggen</button>
         <p style="text-align: center; margin-top: 15px;"><a href="#" onclick="resetDevice()" style="color: #dc3545; font-size: 12px;">Gerät zurücksetzen / Neu aktivieren</a></p>
     </div>
 
-    <!-- ANSICHT 3: DASHBOARDS JE NACH ROLLE -->
+    <!-- ANSICHT 3: DASHBOARDS -->
     <div id="viewDashboard" class="hidden">
         <h2 id="dashTitle">Dashboard</h2>
-        <div id="dashContent" class="card">
+        <div id="dashContent">
             <!-- Dynamischer Inhalt -->
         </div>
         <button onclick="logoutDevice()" style="background: #dc3545; margin-top: 20px;">Abmelden</button>
