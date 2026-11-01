@@ -1,56 +1,74 @@
 let currentUser = null;
 let currentSessionRole = localStorage.getItem('mhd_active_role') || null;
+let simulatedRole = null;
 let pendingKeyData = null;
 let html5QrCode = null;
 
-// FEHLER-TOLERANTER IMPORT DES LOKALEN SPEICHERS
+// Sicheres Laden und automatisches Bereinigen fehlerhafter LocalStorage-Daten
 try {
     const rawUser = localStorage.getItem('mhd_user');
     if (rawUser) {
         currentUser = JSON.parse(rawUser);
-        // Sicherheitsprüfung: Falls veraltete Daten ohne Kassennummer existieren -> autom. resetten
         if (!currentUser || !currentUser.kassennummer || !currentUser.kassenpin) {
             localStorage.clear();
             currentUser = null;
         }
     }
 } catch (e) {
+    console.warn("Storage-Bereinigung ausgeführt:", e);
     localStorage.clear();
     currentUser = null;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    checkInitialState();
+    try {
+        checkInitialState();
+    } catch (err) {
+        console.error("Fehler beim Starten der App:", err);
+        alert("Ein Startfehler ist aufgetreten: " + err.message);
+    }
 });
 
 function checkInitialState() {
     hideAllViews();
     if (!currentUser) {
-        document.getElementById('viewSetupKey').classList.remove('hidden');
-        document.getElementById('statusBadge').innerText = "Status: Nicht aktiviert";
+        const viewSetup = document.getElementById('viewSetupKey');
+        if (viewSetup) viewSetup.classList.remove('hidden');
+        const badge = document.getElementById('statusBadge');
+        if (badge) badge.innerText = "Status: Nicht aktiviert";
     } else {
         const isLoggedIn = localStorage.getItem('mhd_logged_in') === 'true';
         if (isLoggedIn && currentSessionRole) {
             loadDashboard(currentSessionRole);
         } else {
-            document.getElementById('viewLogin').classList.remove('hidden');
-            document.getElementById('statusBadge').innerText = `Gekoppelt als: ${currentUser.name} (${currentUser.rolle})`;
+            const viewLogin = document.getElementById('viewLogin');
+            if (viewLogin) viewLogin.classList.remove('hidden');
+            const badge = document.getElementById('statusBadge');
+            if (badge) badge.innerText = `Gekoppelt als: ${currentUser.name} (${currentUser.rolle})`;
         }
     }
 }
 
 function hideAllViews() {
-    document.getElementById('viewSetupKey').classList.add('hidden');
-    document.getElementById('viewSetupDetails').classList.add('hidden');
-    document.getElementById('viewLogin').classList.add('hidden');
-    document.getElementById('viewDashboard').classList.add('hidden');
+    ['viewSetupKey', 'viewSetupDetails', 'viewLogin', 'viewDashboard'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
 }
 
 // SCHRITT 1: KEY IN DATENBANK PRÜFEN
 async function verifyKeyStep1() {
-    const keyCode = document.getElementById('setupKey').value.trim();
+    const keyInput = document.getElementById('setupKey');
+    if (!keyInput) return;
+    const keyCode = keyInput.value.trim();
+    
     if (!keyCode) {
         alert("Bitte gib einen Aktivierungsschlüssel ein!");
+        return;
+    }
+
+    if (typeof _supabase === 'undefined') {
+        alert("Supabase ist nicht verbunden! Bitte prüfe die Verbindung.");
         return;
     }
 
@@ -68,35 +86,36 @@ async function verifyKeyStep1() {
 
     pendingKeyData = keyData;
     hideAllViews();
-    document.getElementById('viewSetupDetails').classList.remove('hidden');
+    const detailsView = document.getElementById('viewSetupDetails');
+    if (detailsView) detailsView.classList.remove('hidden');
 
     const infoText = document.getElementById('roleInfoText');
     const extraContainer = document.getElementById('extraFieldContainer');
     const extraInput = document.getElementById('setupExtraName');
 
     if (keyData.rolle === 'admin') {
-        infoText.innerText = "👑 Erkannt: Super-Admin Schlüssel";
-        extraContainer.classList.add('hidden');
+        if (infoText) infoText.innerText = "👑 Erkannt: Super-Admin Schlüssel";
+        if (extraContainer) extraContainer.classList.add('hidden');
     } else if (keyData.rolle === 'bezirksleiter') {
-        infoText.innerText = "🏢 Erkannt: Bezirksleitung Key";
-        extraContainer.classList.remove('hidden');
-        extraInput.placeholder = "Name des neuen Bezirks";
+        if (infoText) infoText.innerText = "🏢 Erkannt: Bezirksleitung Key";
+        if (extraContainer) extraContainer.classList.remove('hidden');
+        if (extraInput) extraInput.placeholder = "Name des neuen Bezirks";
     } else if (keyData.rolle === 'teamleiter') {
-        infoText.innerText = "🏪 Erkannt: Teamleiter Key";
-        extraContainer.classList.remove('hidden');
-        extraInput.placeholder = "Name der neuen Filiale";
+        if (infoText) infoText.innerText = "🏪 Erkannt: Teamleiter Key";
+        if (extraContainer) extraContainer.classList.remove('hidden');
+        if (extraInput) extraInput.placeholder = "Name der neuen Filiale";
     } else if (keyData.rolle === 'mitarbeiter') {
-        infoText.innerText = "📱 Erkannt: Mitarbeiter Key";
-        extraContainer.classList.add('hidden');
+        if (infoText) infoText.innerText = "📱 Erkannt: Mitarbeiter Key";
+        if (extraContainer) extraContainer.classList.add('hidden');
     }
 }
 
 // SCHRITT 2: NUTZER ANLEGEN UND GERÄT KOPPELN
 async function registerDeviceStep2() {
-    const name = document.getElementById('setupName').value.trim();
-    const kassennummer = document.getElementById('setupKasse').value.trim();
-    const kassenpin = document.getElementById('setupPin').value.trim();
-    const extraValue = document.getElementById('setupExtraName').value.trim();
+    const name = document.getElementById('setupName')?.value.trim();
+    const kassennummer = document.getElementById('setupKasse')?.value.trim();
+    const kassenpin = document.getElementById('setupPin')?.value.trim();
+    const extraValue = document.getElementById('setupExtraName')?.value.trim();
 
     if (!name || !kassennummer || !kassenpin) {
         alert("Bitte fülle alle Grundfelder aus!");
@@ -143,8 +162,8 @@ async function registerDeviceStep2() {
 
 // SCHNELL-LOGIN MIT PIN
 function loginWithPin() {
-    const kassennummer = document.getElementById('loginKasse').value.trim();
-    const kassenpin = document.getElementById('loginPin').value.trim();
+    const kassennummer = document.getElementById('loginKasse')?.value.trim();
+    const kassenpin = document.getElementById('loginPin')?.value.trim();
 
     if (currentUser && kassennummer === currentUser.kassennummer && kassenpin === currentUser.kassenpin) {
         localStorage.setItem('mhd_logged_in', 'true');
@@ -163,15 +182,24 @@ async function loadDashboard(role) {
     localStorage.setItem('mhd_logged_in', 'true');
 
     hideAllViews();
-    document.getElementById('viewDashboard').classList.remove('hidden');
-    document.getElementById('statusBadge').innerText = `Angemeldet als: ${currentUser ? currentUser.name : 'Nutzer'} (${currentSessionRole})`;
+    const dashView = document.getElementById('viewDashboard');
+    if (dashView) dashView.classList.remove('hidden');
 
-    if ((currentUser && currentUser.rolle === 'admin') || simulatedRole) {
-        document.getElementById('adminSimulatorBar').classList.remove('hidden');
+    const badge = document.getElementById('statusBadge');
+    if (badge) badge.innerText = `Angemeldet als: ${currentUser ? currentUser.name : 'Nutzer'} (${currentSessionRole})`;
+
+    const adminBar = document.getElementById('adminSimulatorBar');
+    if (adminBar) {
+        if ((currentUser && currentUser.rolle === 'admin') || simulatedRole) {
+            adminBar.classList.remove('hidden');
+        } else {
+            adminBar.classList.add('hidden');
+        }
     }
 
     const titleEl = document.getElementById('dashTitle');
     const contentEl = document.getElementById('dashContent');
+    if (!titleEl || !contentEl) return;
 
     if (currentSessionRole === 'admin') {
         titleEl.innerText = "👑 Super-Admin Steuerung";
@@ -289,7 +317,7 @@ async function loadDashboard(role) {
 // AUTOMATISCHER SCANNER
 async function initScanner() {
     const readerEl = document.getElementById('reader');
-    if (readerEl && !html5QrCode) {
+    if (readerEl && !html5QrCode && typeof Html5Qrcode !== 'undefined') {
         html5QrCode = new Html5Qrcode("reader");
         const config = { fps: 10, qrbox: { width: 250, height: 150 } };
         
@@ -298,7 +326,8 @@ async function initScanner() {
                 { facingMode: "environment" },
                 config,
                 (decodedText) => {
-                    document.getElementById('scannedBarcode').value = decodedText;
+                    const barcodeField = document.getElementById('scannedBarcode');
+                    if (barcodeField) barcodeField.value = decodedText;
                 },
                 (errorMessage) => {}
             );
@@ -320,7 +349,9 @@ async function stopScanner() {
 
 // ADMIN: NEUEN BEZIRK ERSTELLEN
 async function createBezirk() {
-    const name = document.getElementById('newBezirkName').value.trim();
+    const nameInput = document.getElementById('newBezirkName');
+    if (!nameInput) return;
+    const name = nameInput.value.trim();
     if (!name) {
         alert("Bitte einen Bezirksnamen eingeben!");
         return;
@@ -331,7 +362,7 @@ async function createBezirk() {
         alert("Fehler beim Erstellen: " + error.message);
     } else {
         alert(`Bezirk "${name}" erfolgreich erstellt!`);
-        document.getElementById('newBezirkName').value = '';
+        nameInput.value = '';
         renderFilialAssignments();
     }
 }
@@ -391,9 +422,9 @@ async function updateFilialeBezirk(filialeId, bezirkId) {
 
 // ARTIKEL SPEICHERN
 async function saveMhdItem() {
-    const barcode = document.getElementById('scannedBarcode').value.trim();
-    const name = document.getElementById('articleName').value.trim();
-    const mhd = document.getElementById('articleMhd').value;
+    const barcode = document.getElementById('scannedBarcode')?.value.trim();
+    const name = document.getElementById('articleName')?.value.trim();
+    const mhd = document.getElementById('articleMhd')?.value;
 
     if (!barcode || !name || !mhd) {
         alert("Bitte Barcode, Artikelbezeichnung und MHD ausfüllen!");
@@ -413,9 +444,9 @@ async function saveMhdItem() {
         alert("Fehler beim Speichern: " + error.message);
     } else {
         alert("Artikel erfolgreich gespeichert!");
-        document.getElementById('scannedBarcode').value = '';
-        document.getElementById('articleName').value = '';
-        document.getElementById('articleMhd').value = '';
+        if (document.getElementById('scannedBarcode')) document.getElementById('scannedBarcode').value = '';
+        if (document.getElementById('articleName')) document.getElementById('articleName').value = '';
+        if (document.getElementById('articleMhd')) document.getElementById('articleMhd').value = '';
     }
 }
 
@@ -438,8 +469,8 @@ function createRandomKeyInput() {
 }
 
 async function generateKey() {
-    const role = document.getElementById('newKeyRole').value;
-    const code = document.getElementById('newKeyCode').value.trim();
+    const role = document.getElementById('newKeyRole')?.value;
+    const code = document.getElementById('newKeyCode')?.value.trim();
 
     if (!code) {
         alert("Bitte einen Key-Code eingeben oder generieren!");
@@ -481,7 +512,7 @@ async function createEmployeeKeyInput() {
 }
 
 async function generateEmployeeKey() {
-    const code = document.getElementById('employeeKeyCode').value.trim();
+    const code = document.getElementById('employeeKeyCode')?.value.trim();
     if (!code) {
         alert("Bitte Key eingeben!");
         return;
@@ -541,10 +572,12 @@ function logoutDevice() {
     localStorage.removeItem('mhd_logged_in');
     localStorage.removeItem('mhd_active_role');
     hideAllViews();
-    document.getElementById('viewLogin').classList.remove('hidden');
+    const loginView = document.getElementById('viewLogin');
+    if (loginView) loginView.classList.remove('hidden');
     simulatedRole = null;
     currentSessionRole = null;
-    document.getElementById('adminSimulatorBar').classList.add('hidden');
+    const adminBar = document.getElementById('adminSimulatorBar');
+    if (adminBar) adminBar.classList.add('hidden');
     location.reload();
 }
 
