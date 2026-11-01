@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function checkInitialState() {
     if (!currentKey) {
         showView('viewSetupKey');
-        set逆にStatus("Status: Nicht aktiviert");
+        setStatus("Status: Nicht aktiviert");
     } else {
         loadDashboard(currentSessionRole);
     }
@@ -24,12 +24,11 @@ function showView(viewId) {
     if (target) target.classList.remove('hidden');
 }
 
-function set逆にStatus(text) {
+function setStatus(text) {
     const badge = document.getElementById('statusBadge');
     if (badge) badge.innerText = text;
 }
 
-// Key-Prüfung über Supabase + Master-Key Support
 async function verifyAndActivateKey() {
     const keyInput = document.getElementById('activationKeyInput');
     if (!keyInput) return;
@@ -40,7 +39,6 @@ async function verifyAndActivateKey() {
         return;
     }
 
-    // 1. Master Key Check
     if (key.toUpperCase() === 'ADMIN-MASTER-KEY') {
         localStorage.setItem('mhd_activation_key', key);
         localStorage.setItem('mhd_active_role', 'admin');
@@ -50,7 +48,6 @@ async function verifyAndActivateKey() {
         return;
     }
 
-    // 2. Supabase Datenbank Check
     const dbData = await checkActivationKeyInDb(key);
     if (dbData) {
         localStorage.setItem('mhd_activation_key', key);
@@ -76,10 +73,12 @@ function setSimulatedRole(role) {
 }
 
 function loadDashboard(role) {
-    showView('viewDashboard');
-    set逆にStatus(`Angemeldet als Rolle: ${role.toUpperCase()}`);
+    // Falls ein Scanner lief, erst sauber stoppen
+    stopScanner();
 
-    // Admin-Simulator-Leiste nur für Admins anzeigen
+    showView('viewDashboard');
+    setStatus(`Angemeldet als Rolle: ${role.toUpperCase()}`);
+
     const adminBar = document.getElementById('adminBar');
     if (adminBar) {
         if (currentKey === 'ADMIN-MASTER-KEY' || role === 'admin') {
@@ -163,7 +162,8 @@ function loadDashboard(role) {
             ${teamleiterExtra}
             <div class="card">
                 <h3>Barcode Scanner & Artikelerfassung</h3>
-                <div id="reader"></div>
+                <!-- Kamera-Vorschaubild für den Scanner -->
+                <div id="reader" style="width: 100%; margin-bottom: 10px;"></div>
                 
                 <label for="barcodeInput">Barcode:</label>
                 <input type="text" id="barcodeInput" placeholder="Barcode scannen oder eingeben...">
@@ -187,8 +187,49 @@ function loadDashboard(role) {
 
     dashContent.innerHTML = mainContentHtml + logoutHtml;
 
+    // Kamera-Scanner für Mitarbeiter und Teamleiter automatisch starten
     if (role !== 'admin' && role !== 'bezirksleitung') {
         initScanner();
+    }
+}
+
+function initScanner() {
+    setTimeout(() => {
+        const readerEl = document.getElementById('reader');
+        if (readerEl && typeof Html5QrCode !== 'undefined') {
+            try {
+                if (!html5QrCode) {
+                    html5QrCode = new Html5QrCode("reader");
+                }
+                html5QrCode.start(
+                    { facingMode: "environment" }, // Nutzt automatisch die Rückkamera
+                    { fps: 10, qrbox: { width: 250, height: 150 } },
+                    (decodedText) => {
+                        const barcodeInput = document.getElementById('barcodeInput');
+                        if (barcodeInput) {
+                            barcodeInput.value = decodedText;
+                        }
+                    },
+                    (errorMessage) => {}
+                ).catch((err) => {
+                    console.log("Kamera-Start Hinweis:", err);
+                });
+            } catch (e) {
+                console.error("Scanner Fehler:", e);
+            }
+        }
+    }, 400);
+}
+
+function stopScanner() {
+    if (html5QrCode) {
+        try {
+            if (html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                }).catch(() => {});
+            }
+        } catch (e) {}
     }
 }
 
@@ -213,28 +254,8 @@ async function saveMhdItemHandler() {
     }
 }
 
-function initScanner() {
-    setTimeout(() => {
-        const readerEl = document.getElementById('reader');
-        if (readerEl && typeof Html5QrCode !== 'undefined') {
-            try {
-                if (!html5QrCode) html5QrCode = new Html5QrCode("reader");
-                html5QrCode.start(
-                    { facingMode: "environment" },
-                    { fps: 10, qrbox: { width: 250, height: 150 } },
-                    (decodedText) => {
-                        const barcodeInput = document.getElementById('barcodeInput');
-                        if (barcodeInput) barcodeInput.value = decodedText;
-                    },
-                    () => {}
-                ).catch(() => {});
-            } catch (e) {}
-        }
-    }, 300);
-}
-
 function logoutApp() {
-    if (html5QrCode) { try { html5QrCode.stop(); } catch(e){} }
+    stopScanner();
     localStorage.removeItem('mhd_activation_key');
     localStorage.removeItem('mhd_active_role');
     location.reload();
