@@ -5,63 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MHD-Tracker</title>
     <link rel="stylesheet" href="css/style.css">
-    <!-- Html5-Qrcode Scanner CDN -->
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#00f5d4">
+    <!-- html5-qrcode Bibliothek für den Kamera-Scanner -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body class="theme-glitter">
 
     <div class="container">
+        <div id="status-bar" class="status-bar">Nicht verbunden</div>
         <h1>MHD-Tracker</h1>
-        <div id="statusBadge">Status: Wird geladen...</div>
 
-        <!-- SIMULATOR BAR (FÜR ADMIN/TEST) -->
-        <div class="admin-bar">
-            <strong>👑 Admin-Simulator:</strong>
-            <div>
-                <button onclick="setSimulatedRole('admin')" class="active">Admin</button>
-                <button onclick="setSimulatedRole('bezirksleitung')">Bezirksleitung</button>
-                <button onclick="setSimulatedRole('teamleiter')">Teamleiter</button>
-                <button onclick="setSimulatedRole('mitarbeiter')">Mitarbeiter</button>
+        <!-- Aktivierungs-Bereich -->
+        <section id="auth-section">
+            <h3>Filiale / Aktivierung</h3>
+            <p>Bitte geben Sie Ihren Aktivierungsschlüssel ein, um fortzufahren.</p>
+            <form id="auth-form">
+                <input type="text" id="activation-key-input" placeholder="Aktivierungsschlüssel eingeben..." required>
+                <button type="submit">Aktivieren</button>
+            </form>
+        </section>
+
+        <!-- Hauptbereich (nach Freischaltung) -->
+        <section id="tracker-section" class="hidden">
+            <div class="actions card">
+                <h3>Neuen Artikel erfassen</h3>
+                <form id="mhd-form">
+                    <div class="scanner-row">
+                        <input type="text" id="article-barcode" placeholder="Barcode scannen / eingeben" required>
+                        <button type="button" id="scan-btn">📷 Scannen</button>
+                    </div>
+                    
+                    <!-- Kamera-Vorschaubild -->
+                    <div id="reader" class="hidden"></div>
+
+                    <label for="article-name">Artikelbezeichnung:</label>
+                    <input type="text" id="article-name" placeholder="z.B. Frischmilch 1L" required>
+                    
+                    <label for="article-mhd">Mindesthaltbarkeitsdatum (MHD):</label>
+                    <input type="date" id="article-mhd" required>
+                    
+                    <button type="submit" style="margin-top: 16px;">Artikel speichern</button>
+                </form>
             </div>
-        </div>
 
-        <!-- VIEW 1: ACTIVATION KEY SETUP -->
-        <div id="viewSetupKey" class="hidden">
-            <h2>App-Aktivierung</h2>
-            <p>Bitte gib deinen erhaltenen Aktivierungs-Key ein:</p>
-            <input type="text" id="activationKeyInput" placeholder="z. B. KIK-TL-9823">
-            <button onclick="verifyActivationKey()">Key überprüfen</button>
-        </div>
-
-        <!-- VIEW 2: DETAILS SETUP -->
-        <div id="viewSetupDetails" class="hidden">
-            <h2>Mitarbeiter Profil anlegen</h2>
-            <p id="keyRoleInfo"></p>
-            <label for="setupName">Name:</label>
-            <input type="text" id="setupName" placeholder="Dein Name">
-            
-            <label for="setupPin">Kassen-PIN (4-stellig):</label>
-            <input type="password" id="setupPin" maxlength="4" placeholder="****">
-            
-            <button onclick="completeRegistration()">Registrierung abschließen</button>
-        </div>
-
-        <!-- VIEW 3: LOGIN -->
-        <div id="viewLogin" class="hidden">
-            <h2>Anmeldung</h2>
-            <label for="loginPin">Kassen-PIN:</label>
-            <input type="password" id="loginPin" maxlength="4" placeholder="****">
-            <button onclick="loginWithPin()">Anmelden</button>
-        </div>
-
-        <!-- VIEW 4: DASHBOARD -->
-        <div id="viewDashboard" class="hidden">
-            <div id="dashContent">
-                <!-- Dynamischer Inhalt je nach Rolle -->
+            <div class="card" style="margin-top: 16px;">
+                <h2>Fällige Artikel (MHD)</h2>
+                <div id="mhd-list" style="margin-top: 10px;">
+                    <!-- Hier werden die Artikel dynamisch aus Supabase geladen -->
+                </div>
             </div>
-        </div>
+
+            <button onclick="logoutApp()" style="background-color: #64748b; margin-top: 20px;">Abmelden / Key wechseln</button>
+        </section>
     </div>
 
+    <!-- Skripte -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
