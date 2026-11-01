@@ -1,13 +1,30 @@
-let currentUser = JSON.parse(localStorage.getItem('mhd_user')) || null;
+let currentUser = null;
 let currentSessionRole = localStorage.getItem('mhd_active_role') || null;
 let pendingKeyData = null;
 let html5QrCode = null;
+
+// FEHLER-TOLERANTER IMPORT DES LOKALEN SPEICHERS
+try {
+    const rawUser = localStorage.getItem('mhd_user');
+    if (rawUser) {
+        currentUser = JSON.parse(rawUser);
+        // Sicherheitsprüfung: Falls veraltete Daten ohne Kassennummer existieren -> autom. resetten
+        if (!currentUser || !currentUser.kassennummer || !currentUser.kassenpin) {
+            localStorage.clear();
+            currentUser = null;
+        }
+    }
+} catch (e) {
+    localStorage.clear();
+    currentUser = null;
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     checkInitialState();
 });
 
 function checkInitialState() {
+    hideAllViews();
     if (!currentUser) {
         document.getElementById('viewSetupKey').classList.remove('hidden');
         document.getElementById('statusBadge').innerText = "Status: Nicht aktiviert";
@@ -20,6 +37,13 @@ function checkInitialState() {
             document.getElementById('statusBadge').innerText = `Gekoppelt als: ${currentUser.name} (${currentUser.rolle})`;
         }
     }
+}
+
+function hideAllViews() {
+    document.getElementById('viewSetupKey').classList.add('hidden');
+    document.getElementById('viewSetupDetails').classList.add('hidden');
+    document.getElementById('viewLogin').classList.add('hidden');
+    document.getElementById('viewDashboard').classList.add('hidden');
 }
 
 // SCHRITT 1: KEY IN DATENBANK PRÜFEN
@@ -43,7 +67,7 @@ async function verifyKeyStep1() {
     }
 
     pendingKeyData = keyData;
-    document.getElementById('viewSetupKey').classList.add('hidden');
+    hideAllViews();
     document.getElementById('viewSetupDetails').classList.remove('hidden');
 
     const infoText = document.getElementById('roleInfoText');
@@ -110,6 +134,8 @@ async function registerDeviceStep2() {
 
     currentUser = userData;
     localStorage.setItem('mhd_user', JSON.stringify(currentUser));
+    localStorage.setItem('mhd_logged_in', 'true');
+    localStorage.setItem('mhd_active_role', currentUser.rolle);
 
     alert("Gerät erfolgreich aktiviert!");
     location.reload();
@@ -136,13 +162,11 @@ async function loadDashboard(role) {
     localStorage.setItem('mhd_active_role', currentSessionRole);
     localStorage.setItem('mhd_logged_in', 'true');
 
-    document.getElementById('viewLogin').classList.add('hidden');
-    document.getElementById('viewSetupKey').classList.add('hidden');
-    document.getElementById('viewSetupDetails').classList.add('hidden');
+    hideAllViews();
     document.getElementById('viewDashboard').classList.remove('hidden');
-    document.getElementById('statusBadge').innerText = `Angemeldet als: ${currentUser.name} (${currentSessionRole})`;
+    document.getElementById('statusBadge').innerText = `Angemeldet als: ${currentUser ? currentUser.name : 'Nutzer'} (${currentSessionRole})`;
 
-    if (currentUser.rolle === 'admin' || simulatedRole) {
+    if ((currentUser && currentUser.rolle === 'admin') || simulatedRole) {
         document.getElementById('adminSimulatorBar').classList.remove('hidden');
     }
 
@@ -377,8 +401,8 @@ async function saveMhdItem() {
     }
 
     const { error } = await _supabase.from('artikel').insert([{
-        filiale_id: currentUser.filiale_id,
-        erfasst_von: currentUser.id,
+        filiale_id: currentUser ? currentUser.filiale_id : null,
+        erfasst_von: currentUser ? currentUser.id : null,
         barcode: barcode,
         bezeichnung: name,
         mhd: mhd,
@@ -466,8 +490,8 @@ async function generateEmployeeKey() {
     const { error } = await _supabase.from('keys').insert([{
         key_code: code,
         rolle: 'mitarbeiter',
-        bezirk_id: currentUser.bezirk_id,
-        filiale_id: currentUser.filiale_id,
+        bezirk_id: currentUser ? currentUser.bezirk_id : null,
+        filiale_id: currentUser ? currentUser.filiale_id : null,
         is_active: true
     }]);
 
@@ -516,7 +540,7 @@ function logoutDevice() {
     stopScanner();
     localStorage.removeItem('mhd_logged_in');
     localStorage.removeItem('mhd_active_role');
-    document.getElementById('viewDashboard').classList.add('hidden');
+    hideAllViews();
     document.getElementById('viewLogin').classList.remove('hidden');
     simulatedRole = null;
     currentSessionRole = null;
