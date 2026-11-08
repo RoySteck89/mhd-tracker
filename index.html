@@ -2,51 +2,353 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MHD-Tracker</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#00f5d4">
-    
-    <!-- Supabase SDK -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MHD Scanner-App PWA</title>
+
+    <!-- PWA Manifest & Theme-Color -->
+    <link rel="manifest" href="pwa/manifest.json">
+    <meta name="theme-color" content="#003366">
+	
+    <!-- Supabase JS Client CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- Lokale Scanner-Bibliothek (Liegt direkt im Ordner js/) -->
-    <script src="js/html5-qrcode.min.js"></script>
+
+    <!-- Externe CSS-Dateien (Modular nach Kaskadierung) -->
+    <link rel="stylesheet" href="css/basis-layout.css">
+    <link rel="stylesheet" href="css/standard-design.css">
+    <link rel="stylesheet" href="css/kik-thema.css">
 </head>
-<body class="theme-glitter">
+<body>
 
-    <div class="container">
-        <h1>MHD-Tracker</h1>
-        <div id="statusBadge">Status: Wird geladen...</div>
+    <!-- Haupt-Container der App -->
+    <div id="app-container">
 
-        <!-- SIMULATOR BAR -->
-        <div class="admin-bar" id="adminBar" style="display:none;">
-            <strong>👑 Admin-Simulator:</strong>
-            <div>
-                <button onclick="setSimulatedRole('admin')" class="active">Admin</button>
-                <button onclick="setSimulatedRole('bezirksleitung')">Bezirksleitung</button>
-                <button onclick="setSimulatedRole('teamleiter')">Teamleiter</button>
-                <button onclick="setSimulatedRole('mitarbeiter')">Mitarbeiter</button>
+        <!-- Kopfzeile: Status & Benutzer-Info -->
+        <header class="app-header">
+            <div class="header-titel">MHD Scanner-App</div>
+    
+            <!-- Benutzer-Info & Master-Admin View Switcher -->
+            <div class="header-rechte-seite">
+                <div id="benutzer-anzeige" class="benutzer-badge">Lade Profil...</div>
+        
+                <!-- Wird nur eingeblendet, wenn rolle === 'Master-Admin' -->
+                <select id="admin-view-switcher" class="view-switcher" style="display: none;">
+                    <option value="Master-Admin">👑 Modus: Master-Admin</option>
+                    <option value="Bezirksleitung">🏢 Modus: Bezirksleitung (BL)</option>
+                    <option value="Teamleitung">📋 Modus: Teamleitung (TL)</option>
+                    <option value="Mitarbeiter">👤 Modus: Mitarbeiter (MA)</option>
+                </select>
             </div>
-        </div>
+        </header>
 
-        <!-- VIEW 1: ACTIVATION KEY SETUP -->
-        <div id="viewSetupKey" class="hidden">
-            <h2>App-Aktivierung</h2>
-            <p>Bitte gib deinen erhaltenen Aktivierungs-Key ein:</p>
-            <input type="text" id="activationKeyInput" placeholder="z. B. ADMIN-MASTER-KEY oder Key">
-            <button onclick="verifyAndActivateKey()">Key überprüfen</button>
-        </div>
+        <!-- Haupt-Inhaltsbereich (Dynamischer Ansichten-Wechsel) -->
+        <main id="haupt-inhalt">
 
-        <!-- VIEW 2: DASHBOARD -->
-        <div id="viewDashboard" class="hidden">
-            <div id="dashContent"></div>
-        </div>
+            <!-- ANSICHT 1: Startseite / Tagesgeschäft & Zentralen -->
+            <section id="ansicht-startseite" class="app-ansicht aktiv">
+
+                <!-- BEREICH FÜR MITARBEITER (Scanner & MHD-Erfassung) -->
+                <div id="bereich-mitarbeiter-scanner" style="display: none;">
+                    <div class="karten-bereich">
+                        <button id="schaltflaeche-scannen" class="schaltflaeche-primaer">
+                            <span>📷</span> BARCODE SCANNEN
+                        </button>
+                    </div>
+                    
+                    <div id="mhd-erfassungs-bereich" class="erfassungs-karte">
+                        <div class="bereichs-titel">Neuen MHD-Eintrag erfassen</div>
+        
+                        <div class="formular-gruppe">
+                            <label for="eingabe-barcode">Barcode / EAN</label>
+                            <input type="text" id="eingabe-barcode" placeholder="Barcode scannen oder eingeben...">
+                        </div>
+
+                        <div class="formular-gruppe">
+                            <label for="eingabe-mhd">Mindesthaltbarkeitsdatum (MHD)</label>
+                            <input type="date" id="eingabe-mhd">
+                        </div>
+
+                        <button id="schaltflaeche-mhd-speichern" class="schaltflaeche-primaer">
+                            💾 MHD Speichern
+                        </button>
+                    </div>
+
+                    <div class="bereichs-titel">Aktive Filial-Artikel</div>
+                    <div id="behälter-aktive-artikel"></div>
+                </div>
+
+                <!-- BEREICH FÜR MASTER-ADMIN -->
+                <div id="bereich-admin-zentrale" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+                        <div style="background: #FFF; padding: 14px; border-radius: 10px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <div id="admin-stat-filialen" style="font-size: 1.4rem; font-weight: 700; color: #003366;">0</div>
+                            <div style="font-size: 0.75rem; color: #6C757D; margin-top: 2px;">Aktive Filialen</div>
+                        </div>
+                        <div style="background: #FFF; padding: 14px; border-radius: 10px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <div id="admin-stat-keys" style="font-size: 1.4rem; font-weight: 700; color: #28A745;">0</div>
+                            <div style="font-size: 0.75rem; color: #6C757D; margin-top: 2px;">Aktive Keys frei</div>
+                        </div>
+                    </div>
+                    <div class="bereichs-titel">🏢 Bezirke & Teamleiter</div>
+                    <div id="admin-schnell-bezirke" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;"></div>
+                    <div class="bereichs-titel">🏬 Registrierte Filialen</div>
+                    <div id="admin-schnell-filialen" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;"></div>
+                </div>
+
+                <!-- BEREICH FÜR BEZIRKSLEITUNG (BL-ZENTRALE) -->
+                <div id="bereich-bl-zentrale" style="display: none;">
+                    <div class="karten-bereich">
+                        <div class="bereichs-titel">🏢 Bezirksleitung - Steuerungszentrale</div>
+                        <div class="erfassungs-karte" style="background: #FFF; padding: 16px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 16px;">
+                            <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 6px; color: #003366;">Neuen Teamleiter-Key per Klick erstellen</div>
+                            <p style="font-size: 0.8rem; color: #6C757D; margin-bottom: 14px;">Generiere einen Einmalkode für einen Teamleiter zur Bezirkszuweisung.</p>
+                            <button id="schaltflaeche-bl-key-erstellen" class="schaltflaeche-primaer" style="width: 100%; background-color: #28A745; font-weight: 700;">
+                                ⚡ Filial-Key für Bezirk generieren
+                            </button>
+                        </div>
+                        <div class="bereichs-titel">🏬 Filialen in Ihrem Bezirk</div>
+                        <div id="behaelter-bl-filialen-liste" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;"></div>
+                    </div>
+                </div>
+
+                <!-- BEREICH FÜR TEAMLEITUNG (TL-ZENTRALE / FILIAL-DASHBOARD) -->
+                <div id="bereich-teamleiter-zentrale" style="display: none;">
+                    <div class="karten-bereich">
+                        <div class="bereichs-titel">📋 Teamleitung - Filialzentrale</div>
+                        
+                        <div class="erfassungs-karte" style="background: #FFF; padding: 16px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 16px;">
+                            <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 8px; color: #003366;">Mitarbeiter-Aktivierungscode für Ihre Filiale</div>
+                            <p style="font-size: 0.8rem; color: #6C757D; margin-bottom: 12px;">Geben Sie diesen Code an Ihre Mitarbeiter weiter, damit sie sich bei der Erstanmeldung direkt Ihrer Filiale zuordnen können.</p>
+                            
+                            <div id="tl-mitarbeiter-key-anzeige" style="font-family: monospace; font-size: 1.2rem; font-weight: bold; background: #F8F9FA; padding: 12px; text-align: center; border: 1px dashed #CED4DA; border-radius: 6px; color: #003366; margin-bottom: 12px;">
+                                Lade Code...
+                            </div>
+                            
+                            <button id="schaltflaeche-tl-key-kopieren" class="schaltflaeche-primaer" style="width: 100%; background-color: #003366;">
+                                📋 Mitarbeiter-Key kopieren
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- ANSICHT 2: Minimalistische Artikelliste & Live-Suche -->
+            <section id="ansicht-suche" class="app-ansicht ausblenden">
+                <div class="such-bereich">
+                    <input type="text" id="eingabe-artikel-suche" placeholder="Artikelnamen eingeben..." autocomplete="off">
+                </div>
+                <div class="bereichs-titel">Registrierte Artikel</div>
+                <div id="behälter-such-ergebnisse"></div>
+            </section>
+
+            <!-- ANSICHT 3: Mitarbeiter-Motivations-Profil -->
+            <section id="ansicht-profil" class="app-ansicht ausblenden">
+                <div id="behälter-mitarbeiter-statistik"></div>
+            </section>
+
+            <!-- ANSICHT 4: TEAMLEITER-MITARBEITER-VERWALTUNG -->
+            <section id="ansicht-tl-mitarbeiter" class="app-ansicht ausblenden">
+                <div class="karten-bereich">
+                    <div class="bereichs-titel">👥 Mitarbeiter-Verwaltung (Filiale)</div>
+                    <p style="font-size: 0.85rem; color: #6C757D; margin-bottom: 16px;">Verwalten Sie hier die zugeordneten Mitarbeiter Ihrer Filiale.</p>
+                    
+                    <div id="tl-mitarbeiter-bearbeiten-karte" class="erfassungs-karte" style="display: none; background: #FFF; padding: 16px; border-radius: 10px; border: 1px solid #003366; margin-bottom: 16px;">
+                        <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 10px; color: #003366;">Mitarbeiter bearbeiten</div>
+                        <input type="hidden" id="tl-bearbeiten-id">
+                        <div class="formular-gruppe">
+                            <label for="tl-bearbeiten-name">Name / Bezeichnung</label>
+                            <input type="text" id="tl-bearbeiten-name" placeholder="z. B. Anna Schmidt" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 10px;">
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="schaltflaeche-ma-speichern" class="schaltflaeche-primaer" style="flex: 1; background-color: #28A745; padding: 10px;">💾 Speichern</button>
+                            <button id="schaltflaeche-ma-abbrechen" style="flex: 1; background: #e9ecef; border: none; padding: 10px; border-radius: 6px; font-weight: 600; cursor: pointer;">Abbrechen</button>
+                        </div>
+                    </div>
+
+                    <div id="behaelter-tl-mitarbeiter-liste" style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="padding: 12px; text-align: center; color: #6C757D;">Lade Mitarbeiter...</div>
+                    </div>
+                </div>
+            </section>
+			
+            <!-- ANSICHT 5: MASTER-ADMIN DASHBOARD -->
+            <section id="ansicht-admin-dashboard" class="app-ansicht ausblenden">
+                <div class="karten-bereich">
+                    <div class="bereichs-titel">👑 Master-Admin Steuerzentrale</div>
+                    <div style="display: flex; gap: 6px; margin-bottom: 16px; background: #e9ecef; padding: 4px; border-radius: 8px;">
+                        <button class="admin-subtab-btn aktiv" data-subtab="subtab-keys" style="flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">🔑 Keys</button>
+                        <button class="admin-subtab-btn" data-subtab="subtab-filialen" style="flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">🏢 Filialen</button>
+                        <button class="admin-subtab-btn" data-subtab="subtab-logbuch" style="flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;">📜 Logbuch</button>
+                    </div>
+
+                    <div id="subtab-keys" class="admin-subtab-inhalt">
+                        <div class="erfassungs-karte" style="background: #FFF; padding: 16px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 16px;">
+                            <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 12px; color: #003366;">Neuen Aktivierungsschlüssel generieren</div>
+                            <div class="formular-gruppe">
+                                <label for="admin-schluessel-typ">Rolle / Berechtigung</label>
+                                <select id="admin-schluessel-typ" class="form-control" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 10px;">
+                                    <option value="Bezirksleitung">Bezirksleitung (Einmal-Key)</option>
+                                    <option value="Teamleitung">Teamleitung (Flexibel / Filial-Erstellung)</option>
+                                    <option value="Mitarbeiter">Mitarbeiter (Standard Filiale)</option>
+                                </select>
+                            </div>
+                            <div class="formular-gruppe">
+                                <label for="admin-schluessel-bezeichnung">Bezeichnung / Inhaber</label>
+                                <input type="text" id="admin-schluessel-bezeichnung" placeholder="z. B. Filiale Kempten / Herr Müller" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 10px;">
+                            </div>
+                            <div class="formular-gruppe">
+                                <label for="admin-schluessel-filiale">Filial-ID (optional bei Teamleitung)</label>
+                                <input type="text" id="admin-schluessel-filiale" placeholder="z. B. Filiale-05 oder leer lassen" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 15px;">
+                            </div>
+                            <button id="schaltflaeche-key-erstellen" class="schaltflaeche-primaer" style="width: 100%; background-color: #28A745;">
+                                ⚡ Einmalkey generieren
+                            </button>
+                        </div>
+                        <div class="bereichs-titel">Aktive System-Schlüssel & Berechtigungen</div>
+                        <div id="behaelter-schluessel-liste" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;"></div>
+                    </div>
+
+                    <div id="subtab-filialen" class="admin-subtab-inhalt" style="display: none;">
+                        <div class="erfassungs-karte" style="background: #FFF; padding: 16px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 16px;">
+                            <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 12px; color: #003366;">Neue Filiale im System registrieren</div>
+                            <div class="formular-gruppe">
+                                <label for="admin-neue-filiale-name">Filialname / Standort</label>
+                                <input type="text" id="admin-neue-filiale-name" placeholder="z. B. KiK Dietmannsried" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 10px;">
+                            </div>
+                            <div class="formular-gruppe">
+                                <label for="admin-neue-filiale-code">Filial-Nummer / ID</label>
+                                <input type="text" id="admin-neue-filiale-code" placeholder="z. B. FIL-8042" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ccc; margin-bottom: 15px;">
+                            </div>
+                            <button id="schaltflaeche-filiale-erstellen" class="schaltflaeche-primaer" style="width: 100%; background-color: #003366;">
+                                🏢 Filiale anlegen
+                            </button>
+                        </div>
+                        <div class="bereichs-titel">Registrierte Filialen</div>
+                        <div id="behaelter-filialen-liste" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                    </div>
+
+                    <div id="subtab-logbuch" class="admin-subtab-inhalt" style="display: none;">
+                        <div class="bereichs-titel">Einlöse-Historie & System-Audit</div>
+                        <div id="behaelter-logbuch-liste" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                    </div>
+                </div>
+            </section>
+			
+            <!-- AKTIVIERUNGS- / LOGIN-ANSICHT -->
+            <div id="ansicht-aktivierung" class="app-ansicht auth-ansicht" style="display: none;">
+                
+                <!-- STEP 1: Code-Eingabe (Erststart) -->
+                <div id="auth-schritt-code" class="auth-karte">
+                    <h2>App-Aktivierung</h2>
+                    <p class="auth-hinweis">Bitte gib deinen Aktivierungsschlüssel ein, um die App freizuschalten.</p>
+                    <div class="formular-gruppe">
+                        <label for="eingabe-aktivierungsschluessel">Aktivierungsschlüssel</label>
+                        <input type="text" id="eingabe-aktivierungsschluessel" placeholder="z. B. KIK-1234-5678-9012" autocomplete="off">
+                    </div>
+                    <button id="schaltflaeche-aktivieren" class="schaltflaeche-primaer">
+                        🔑 Schlüssel Prüfen
+                    </button>
+                </div>
+
+                <!-- STEP 2A: Registrierung für Teamleiter -->
+                <div id="auth-schritt-tl-registrierung" class="auth-karte" style="display: none;">
+                    <h2>Filiale einrichten</h2>
+                    <p class="auth-hinweis">Teamleiter-Key erkannt. Bitte trage deine Filial- und Kontaktdaten ein.</p>
+                    
+                    <div class="formular-gruppe">
+                        <label for="tl-reg-filialname">Filialnummer / Standort</label>
+                        <input type="text" id="tl-reg-filialname" placeholder="z. B. 2515 Kempten">
+                    </div>
+                    <div class="formular-gruppe">
+                        <label for="tl-reg-name">Dein vollständiger Name</label>
+                        <input type="text" id="tl-reg-name" placeholder="z. B. Max Mustermann">
+                    </div>
+                    <div class="formular-gruppe">
+                        <label for="tl-reg-persnr">Personalnummer</label>
+                        <input type="text" id="tl-reg-persnr" placeholder="z. B. 859042" maxlength="4">
+                    </div>
+                    <div class="formular-gruppe">
+                        <label for="tl-reg-pin">Kassen-PIN (für zukünftigen Login)</label>
+                        <input type="password" id="tl-reg-pin" placeholder="z. B. 1234" maxlength="4">
+                    </div>
+
+                    <button id="schaltflaeche-tl-registrieren" class="schaltflaeche-primaer" style="background-color: #28A745;">
+                        💾 Filiale registrieren & Starten
+                    </button>
+                </div>
+
+                <!-- STEP 2B: Registrierung für Bezirksleitung (NEU mit eigener PIN statt Kassen-PIN) -->
+                <div id="auth-schritt-bl-registrierung" class="auth-karte" style="display: none;">
+                    <h2>Bezirk einrichten</h2>
+                    <p class="auth-hinweis">Bezirksleitungs-Key erkannt. Bitte trage deine Daten und deinen persönlichen PIN ein.</p>
+                    
+                    <div class="formular-gruppe">
+                        <label for="bl-reg-name">Dein vollständiger Name</label>
+                        <input type="text" id="bl-reg-name" placeholder="z. B. Anna Schmidt">
+                    </div>
+                    <div class="formular-gruppe">
+                        <label for="bl-reg-persnr">Personalnummer</label>
+                        <input type="text" id="bl-reg-persnr" placeholder="z. B. 4012" maxlength="4">
+                    </div>
+                    <div class="formular-gruppe">
+                        <label for="bl-reg-pin">Persönlicher PIN (für zukünftigen Login)</label>
+                        <input type="password" id="bl-reg-pin" placeholder="z. B. 5678" maxlength="4">
+                    </div>
+
+                    <button id="schaltflaeche-bl-registrieren" class="schaltflaeche-primaer" style="background-color: #28A745;">
+                        💾 Bezirk registrieren & Starten
+                    </button>
+                </div>
+
+            </div>
+
+        </main>
+
+        <!-- Untere Navigationsleiste -->
+        <nav id="fuss-navigation">
+            <button class="nav-schaltflaeche aktiv" data-ziel="ansicht-startseite">
+                <span class="nav-symbol">🏠</span>
+                <span>Übersicht</span>
+            </button>
+            <button class="nav-schaltflaeche" data-ziel="ansicht-suche">
+                <span class="nav-symbol">🔍</span>
+                <span>Artikelliste</span>
+            </button>
+            <button class="nav-schaltflaeche" data-ziel="ansicht-profil">
+                <span class="nav-symbol">👤</span>
+                <span>Profil</span>
+            </button>
+            <!-- Teamleiter-Team-Button -->
+            <button class="nav-schaltflaeche" data-ziel="ansicht-tl-mitarbeiter" id="nav-btn-tl-team" style="display: none;">
+                <span class="nav-symbol">👥</span>
+                <span>Team</span>
+            </button>
+            <!-- Admin-Button -->
+            <button class="nav-schaltflaeche" data-ziel="ansicht-admin-dashboard" id="nav-btn-admin" style="display: none;">
+                <span class="nav-symbol">👑</span>
+                <span>Admin</span>
+            </button>
+        </nav>
+
     </div>
 
-    <!-- App Logik -->
-    <script src="js/supabase.js"></script>
-    <script src="js/app.js"></script>
+    <!-- JavaScript-Dateien -->
+    <script src="js/datenbank-verbindung.js"></script>
+    <script src="js/benutzer-verwaltung.js"></script>
+    <script src="js/scanner-logik.js"></script>
+    <script src="js/artikel-suche.js"></script>
+    <script src="js/mitarbeiter-profil.js"></script>
+    <script src="js/app-steuerung.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/admin-dashboard.js"></script>
+	<script src="js/bezirksleitung-dashboard.js"></script>
+
+    <!-- Service-Worker Registrierung -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('pwa/service-worker.js')
+                .catch(fehler => console.error('Service Worker Fehler:', fehler));
+        }
+    </script>
 </body>
 </html>

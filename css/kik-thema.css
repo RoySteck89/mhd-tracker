@@ -1,0 +1,70 @@
+/* ==========================================================================
+   3. KIK-THEMA (Spezifische Branding-Farben)
+   ========================================================================== */
+
+#kopfzeile {
+    background-color: #003366 !important; /* KiK-Blau */
+}
+
+.schaltflaeche-primaer {
+    background-color: #003366;
+    color: #FFFFFF;
+}
+
+.schaltflaeche-primaer:hover {
+    background-color: #002244;
+}
+
+.nav-schaltflaeche.aktiv {
+    color: #003366 !important;
+}
+
+.schaltflaeche-erfolg {
+    background-color: #28A745;
+    color: #FFFFFF;
+}
+
+.schaltflaeche-gefahr-kontur {
+    background-color: transparent;
+    color: #DC3545;
+    border: 2px solid #DC3545;
+}
+
+/* Moderner, sauberer Header-Bereich */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: #003366; /* KiK-Blau */
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.header-titel {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.header-rechte-seite {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.benutzer-badge {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.view-switcher {
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #ffc107;
+    font-weight: bold;
+    cursor: pointer;
+}

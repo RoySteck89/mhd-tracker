@@ -1,0 +1,492 @@
+/* ==========================================================================
+   1. BASIS-LAYOUT (Skelett & funktionale Strukturen)
+   ========================================================================== */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #E9ECEF;
+}
+
+/* Haupt-App-Container (Mobil-First Zentrierung) */
+#app-container {
+    width: 100%;
+    max-width: 430px;
+    height: 100vh;
+    max-height: 900px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Kopfzeile */
+#kopfzeile {
+    height: 60px;
+    padding: 0 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+#app-titel {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+#benutzer-bereich {
+    font-size: 0.85rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+/* Inhaltsbereich & Ansichten-Steuerung */
+#haupt-inhalt {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.app-ansicht {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+.app-ansicht.ausblenden {
+    display: none !important;
+}
+
+.app-ansicht.aktiv {
+    display: flex !important;
+}
+
+/* Touch-Targets & Schaltflächen (Mindesthöhe 48–54px für Mobilnutzung) */
+.schaltflaeche-primaer {
+    width: 100%;
+    min-height: 54px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.schaltflaeche-primaer:active {
+    transform: scale(0.98);
+}
+
+.bereichs-titel {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Suchfeld Layout */
+.such-bereich input {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 16px;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1px solid #CED4DA;
+    outline: none;
+}
+
+/* Untere Navigationsleiste */
+#fuss-navigation {
+    height: 65px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.nav-schaltflaeche {
+    flex: 1;
+    height: 100%;
+    background: none;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.nav-symbol {
+    font-size: 1.2rem;
+}
+
+/* Styling für den MHD-Erfassungsbereich */
+.erfassungs-karte {
+    background: #FFFFFF;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.erfassungs-karte .bereichs-titel {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #003366;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #E9ECEF;
+    padding-bottom: 8px;
+}
+
+.formular-gruppe {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.formular-gruppe label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.formular-gruppe input {
+    width: 100%;
+    height: 48px;
+    padding: 0 12px;
+    border: 1px solid #CED4DA;
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+    background: #FFF;
+}
+
+.formular-gruppe input:focus {
+    border-color: #003366;
+}
+
+/* ==========================================
+   LOGIN & REGISTRIERUNG (Zentrales Design)
+   ========================================== */
+
+.auth-ansicht {
+    padding: 20px;
+}
+
+.auth-karte {
+    max-width: 400px;
+    margin: 40px auto;
+    background: #FFFFFF;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.auth-karte h2 {
+    color: #003366;
+    margin-bottom: 4px;
+    font-size: 1.4rem;
+    text-align: center;
+}
+
+.auth-karte select {
+    width: 100%;
+    height: 44px;
+    padding: 0 12px;
+    border: 1px solid #CED4DA;
+    border-radius: 8px;
+    background: #FFF;
+    font-size: 1rem;
+    outline: none;
+}
+
+.schaltflaeche-gruen {
+    background-color: #28A745 !important;
+}
+
+.auth-fussnote {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #6C757D;
+    margin-top: 4px;
+}
+
+.auth-fussnote a {
+    color: #003366;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.auth-fussnote a:hover {
+    text-decoration: underline;
+}
+
+/* Perfekt zentriertes Vollbild für Login und Registrierung */
+#ansicht-login,
+#ansicht-registrierung {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #F8F9FA;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.auth-karte {
+    width: 100%;
+    max-width: 400px;
+    background: #FFFFFF;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.header-rechte-seite {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.view-switcher {
+    background: #FFC107;
+    color: #212529;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#ansicht-aktivierung {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #F8F9FA;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.auth-hinweis {
+    font-size: 0.9rem;
+    color: #6C757D;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* Moderner, responsiver Header */
+.app-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px;
+    background-color: #003366; /* KiK-Blau */
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.header-titel {
+    font-size: 1.15rem;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.header-rechte-seite {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+}
+
+.benutzer-badge {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.view-switcher {
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: none;
+    background: #ffc107;
+    color: #000;
+    font-weight: bold;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+/* ==========================================================================
+   ADMIN-, BL- & TL-REGISTRIERUNGSSYSTEM (CLASSES STATT INLINE-STYLES)
+   ========================================================================== */
+
+/* Quick-Stats Grid & Banner */
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.stat-karte {
+    background: var(--farbe-hintergrund-karte, #ffffff);
+    padding: 14px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.stat-zahl {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--farbe-primaer, #003366);
+}
+
+.stat-beschriftung {
+    font-size: 0.75rem;
+    color: #6C757D;
+    margin-top: 2px;
+}
+
+/* Modals & Registrierungs-Karten */
+.karte-hervorgehoben {
+    background: #ffffff;
+    padding: 16px;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 16px;
+}
+
+.bearbeiten-karte {
+    background: #ffffff;
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid var(--farbe-primaer, #003366);
+    margin-bottom: 16px;
+}
+
+/* Code- & Key-Displays */
+.key-anzeige-box {
+    font-family: monospace;
+    font-size: 1.2rem;
+    font-weight: bold;
+    background: #F8F9FA;
+    padding: 12px;
+    text-align: center;
+    border: 1px dashed #CED4DA;
+    border-radius: 6px;
+    color: var(--farbe-primaer, #003366);
+    margin-bottom: 12px;
+}
+
+/* Dynamische Listen-Elemente (Karten für Schlüssel, Filialen, Mitarbeiter) */
+.liste-karte {
+    background: #ffffff;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid #E9ECEF;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.liste-karte-titel {
+    font-weight: 700;
+    color: var(--farbe-primaer, #003366);
+    font-size: 0.95rem;
+}
+
+.liste-karte-untertitel {
+    font-size: 0.82rem;
+    color: #495057;
+    margin-top: 2px;
+}
+
+/* Status Badges */
+.badge-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-aktiv {
+    background: #D4EDDA;
+    color: #155724;
+}
+
+.badge-inaktiv {
+    background: #FFF3CD;
+    color: #856404;
+}
+
+/* Action Buttons in Listen */
+.btn-aktions-loeschen {
+    background: #fff5f5;
+    color: #c92a2a;
+    border: 1px solid #ffc9c9;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-aktions-bearbeiten {
+    background: #e9ecef;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
