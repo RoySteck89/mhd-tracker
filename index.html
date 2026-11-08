@@ -127,6 +127,20 @@
                                 📋 Mitarbeiter-Key kopieren
                             </button>
                         </div>
+
+                        <!-- NEU: QR-CODE AUSHANG / DIREKTZUGRIFF FÜR MITARBEITER -->
+                        <div class="erfassungs-karte" style="background: #FFF; padding: 16px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 16px;">
+                            <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 8px; color: #003366;">📱 App-Direktzugriff per QR-Code</div>
+                            <p style="font-size: 0.8rem; color: #6C757D; margin-bottom: 12px;">Mitarbeiter können diesen QR-Code scannen, um die App sofort auf einem Ersatzgerät im Browser zu öffnen.</p>
+                            
+                            <div style="text-align: center; margin-bottom: 12px;">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://mhd-tracker-zeta.vercel.app/" alt="App QR-Code" style="border-radius: 6px; border: 1px solid #CED4DA; padding: 4px; background: #FFF;">
+                            </div>
+                            
+                            <button id="schaltflaeche-tl-qr-drucken" class="schaltflaeche-primaer" style="width: 100%; background-color: #28A745;">
+                                🖨️ QR-Code Aushang drucken / anzeigen
+                            </button>
+                        </div>
                     </div>
                 </div>
 

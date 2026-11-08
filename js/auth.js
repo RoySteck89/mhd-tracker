@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Teamleiter Registrierung (mit Filialnummer & Standort z.B. "2053 Dietmannsried")
+    // Teamleiter Registrierung (speichert den echten Namen im Key statt des Ortsnamens)
     if (btnTlRegistrieren) {
         btnTlRegistrieren.addEventListener('click', async () => {
             const filialEingabe = document.getElementById('tl-reg-filialname').value.trim();
@@ -147,7 +147,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (temporaererLizenzSpeicher && temporaererLizenzSpeicher.ist_einmalig) {
                     await window.supabaseVerbindung.client
                         .from('lizenz_schluessel')
-                        .update({ benutzt: true, filiale_id: filialEingabe })
+                        .update({ 
+                            benutzt: true, 
+                            filiale_id: filialEingabe,
+                            bezeichnung: name // Echter Name des Teamleiters als Verantwortlicher
+                        })
                         .eq('id', temporaererLizenzSpeicher.id);
                 }
 
@@ -374,6 +378,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // QR-Code Aushang Drucken / Anzeigen Funktion für Teamleiter
+    const btnQrDrucken = document.getElementById('schaltflaeche-tl-qr-drucken');
+    if (btnQrDrucken) {
+        btnQrDrucken.addEventListener('click', () => {
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>MHD Scanner-App - QR-Code Aushang</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; color: #003366; }
+                        h1 { font-size: 28px; margin-bottom: 10px; }
+                        p { font-size: 18px; color: #555; margin-bottom: 30px; }
+                        .qr-box { border: 3px dashed #003366; display: inline-block; padding: 25px; border-radius: 12px; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+                        img { width: 260px; height: 260px; }
+                        .footer { margin-top: 40px; font-size: 15px; font-weight: bold; color: #333; }
+                    </style>
+                </head>
+                <body>
+                    <h1>MHD Scanner-App</h1>
+                    <p>Scanne diesen QR-Code mit deinem Smartphone, um die App im Browser zu öffnen.</p>
+                    <div class="qr-box">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=https://mhd-tracker-zeta.vercel.app/" alt="App QR-Code">
+                    </div>
+                    <div class="footer">KiK Filial-Management &bull; Einfach mit Personalnummer & PIN einloggen</div>
+                    <script>
+                        window.onload = function() { window.print(); };
+                    </script>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        });
+    }
+
     function oberflaecheAnRolleAnpassen(rolle) {
         const scannerBereich = document.getElementById('bereich-mitarbeiter-scanner');
         const adminZentrale = document.getElementById('bereich-admin-zentrale');
@@ -397,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (rolle === 'Bezirksleitung') {
             if (blZentrale) blZentrale.style.display = 'block';
         } else if (rolle === 'Teamleitung') {
-            // Teamleitung sieht sowohl das TL-Dashboard (Mitarbeiter-Code) als auch den Scanner
+            // Teamleitung sieht sowohl das TL-Dashboard (Mitarbeiter-Code & QR-Code) als auch den Scanner
             if (tlZentrale) tlZentrale.style.display = 'block';
             if (scannerBereich) scannerBereich.style.display = 'block';
             if (tlTeamTabBtn) tlTeamTabBtn.style.display = 'flex';
