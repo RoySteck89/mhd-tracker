@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LIZENZ- & AKTIVIERUNGSLOGIK (VOLLSTÄNDIG STABILISIERT & CSS-ERZWUNGEN)
+   LIZENZ- & AKTIVIERUNGSLOGIK (FINAL BEHOBEN GEGEN WEISSEN BILDSCHIRM)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -43,15 +43,30 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.setAttribute('data-theme', themaName);
     }
 
-    function zeigeAktivierung() {
+    // HILFSFUNKTION: Zeigt nur die gewünschte Auth-Karte und versteckt den Rest
+    function zeigeAuthSchritt(schrittElement) {
         if (ansichtAktivierung) {
             ansichtAktivierung.classList.remove('ausblenden');
             ansichtAktivierung.style.display = 'flex';
         }
-        if (schrittCode) schrittCode.style.display = 'block';
-        if (schrittTlReg) schrittTlReg.style.display = 'none';
-        if (schrittBlReg) schrittBlReg.style.display = 'none';
-        if (schrittMaReg) schrittMaReg.style.display = 'none';
+        
+        // Alle Schritte verstecken
+        [schrittCode, schrittTlReg, schrittBlReg, schrittMaReg].forEach(el => {
+            if (el) {
+                el.style.display = 'none';
+                el.classList.add('ausblenden');
+            }
+        });
+
+        // Gewünschten Schritt einblenden
+        if (schrittElement) {
+            schrittElement.style.display = 'flex';
+            schrittElement.classList.remove('ausblenden');
+        }
+    }
+
+    function zeigeAktivierung() {
+        zeigeAuthSchritt(schrittCode);
         if (benutzerAnzeige) benutzerAnzeige.textContent = 'Nicht aktiviert';
     }
 
@@ -109,26 +124,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 temporaererLizenzSpeicher = lizenz;
 
-                if (schrittCode) schrittCode.style.display = 'none';
-
+                // Gezielte Weiterleitung je nach Rolle zur jeweiligen Registrierungskarte
                 if (lizenz.rolle === 'Teamleitung') {
-                    if (schrittTlReg) schrittTlReg.style.display = 'block';
-                    if (schrittBlReg) schrittBlReg.style.display = 'none';
-                    if (schrittMaReg) schrittMaReg.style.display = 'none';
+                    zeigeAuthSchritt(schrittTlReg);
                     return;
                 }
 
                 if (lizenz.rolle === 'Bezirksleitung') {
-                    if (schrittBlReg) schrittBlReg.style.display = 'block';
-                    if (schrittTlReg) schrittTlReg.style.display = 'none';
-                    if (schrittMaReg) schrittMaReg.style.display = 'none';
+                    zeigeAuthSchritt(schrittBlReg);
                     return;
                 }
 
                 if (lizenz.rolle === 'Mitarbeiter') {
-                    if (schrittMaReg) schrittMaReg.style.display = 'block';
-                    if (schrittTlReg) schrittTlReg.style.display = 'none';
-                    if (schrittBlReg) schrittBlReg.style.display = 'none';
+                    zeigeAuthSchritt(schrittMaReg);
                     return;
                 }
 
@@ -344,12 +352,13 @@ document.addEventListener('DOMContentLoaded', () => {
             benutzerAnzeige.innerHTML = `👑 <strong>${lizenz.name}</strong> (${lizenz.rolle})`;
         }
 
+        // Aktivierungs-Overlay komplett ausblenden
         if (ansichtAktivierung) {
             ansichtAktivierung.style.display = 'none';
             ansichtAktivierung.classList.add('ausblenden');
         }
 
-        // HIER WIRD DIE HAUPTANSICHT EXPLIZIT ERZWUNGEN (VERHINDERT WEISSEN BILDSCHIRM)
+        // Startansicht erzwingen
         const startAnsicht = document.getElementById('ansicht-startseite');
         if (startAnsicht) {
             startAnsicht.classList.remove('ausblenden');
@@ -627,7 +636,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const tlTeamTabBtn = document.getElementById('nav-btn-tl-team');
 
         if (scannerBereich) { scannerBereich.style.display = 'none'; scannerBereich.classList.add('ausblenden'); }
-        if (adminZentrale) { adminZentrum = adminZentrale; adminZentrale.style.display = 'none'; adminZentrale.classList.add('ausblenden'); }
         if (adminZentrale) { adminZentrale.style.display = 'none'; adminZentrale.classList.add('ausblenden'); }
         if (blZentrale) { blZentrale.style.display = 'none'; blZentrale.classList.add('ausblenden'); }
         if (tlZentrale) { tlZentrale.style.display = 'none'; tlZentrale.classList.add('ausblenden'); }
