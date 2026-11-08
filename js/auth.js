@@ -490,9 +490,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         listeBehaelter.innerHTML = '<div class="lade-text">Lade Mitarbeiter...</div>';
 
+        if (!filialId) {
+            listeBehaelter.innerHTML = '<div class="liste-karte" style="justify-content: center; color: #6C757D;">Keine Filial-ID für diesen Teamleiter hinterlegt.</div>';
+            return;
+        }
+
         try {
             const schluessel = await window.supabaseVerbindung.datenAbrufen('lizenz_schluessel');
-            const eingelösteKeys = schluessel.filter(k => k.filiale_id === filialId && k.rolle === 'Mitarbeiter' && k.benutzt);
+            const saubereFilialId = filialId.toString().trim().toLowerCase();
+
+            // Robuster Filter: Prüft Filial-ID unabhängig von Groß-/Kleinschreibung und ob es ein Mitarbeiter ist
+            const eingelösteKeys = schluessel.filter(k => {
+                constkFiliale = k.filiale_id ? k.filiale_id.toString().trim().toLowerCase() : '';
+                return kFiliale === saubereFilialId && k.rolle === 'Mitarbeiter';
+            });
 
             if (eingelösteKeys.length === 0) {
                 listeBehaelter.innerHTML = '<div class="liste-karte" style="justify-content: center; color: #6C757D;">Noch keine Mitarbeiter in dieser Filiale registriert.</div>';
