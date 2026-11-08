@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LIZENZ- & AKTIVIERUNGSLOGIK (KOMPLETT & AKTUALISIERT)
+   LIZENZ- & AKTIVIERUNGSLOGIK (KOMPLETT & AKTUALISIERT MIT THEMEN-SYNC)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -24,7 +24,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnMaSpeichern = document.getElementById('schaltflaeche-ma-speichern');
     const btnMaAbbrechen = document.getElementById('schaltflaeche-ma-abbrechen');
 
+    // Thema / Design Auswahl im Profil
+    const auswahlFarbThema = document.getElementById('auswahl-farb-thema');
+
     let temporaererLizenzSpeicher = null;
+
+    function wendeThemaAn(themaName) {
+        const themeStylesheet = document.getElementById('theme-stylesheet');
+        if (!themeStylesheet) return;
+
+        if (themaName === 'standard') {
+            themeStylesheet.href = 'css/standard-design.css';
+        } else if (themaName === 'dark') {
+            themeStylesheet.href = 'css/dark-design.css'; // Falls vorhanden, sonst Standard
+        } else {
+            themeStylesheet.href = 'css/standard-design.css'; // Standard-Fallback für KiK
+        }
+        document.body.setAttribute('data-theme', themaName);
+    }
 
     function pruefeAktivierung() {
         const gespeicherteLizenz = localStorage.getItem('kik_app_lizenz');
@@ -90,10 +107,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const lizenzInfo = {
+                    id: lizenz.id,
                     name: lizenz.bezeichnung || 'Mitarbeiter',
                     rolle: lizenz.rolle,
                     filiale_id: lizenz.filiale_id || '',
-                    schluessel: lizenz.schluessel_code
+                    schluessel: lizenz.schluessel_code,
+                    thema: lizenz.thema || 'kik'
                 };
 
                 localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
@@ -107,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Teamleiter Registrierung (speichert den echten Namen im Key statt des Ortsnamens)
+    // Teamleiter Registrierung
     if (btnTlRegistrieren) {
         btnTlRegistrieren.addEventListener('click', async () => {
             const filialEingabe = document.getElementById('tl-reg-filialname').value.trim();
@@ -121,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                // Filiale direkt in Supabase speichern mit filial_code
                 const { error: filialError } = await window.supabaseVerbindung.client
                     .from('filialen')
                     .insert([{ name: filialEingabe, filial_code: filialEingabe }]);
@@ -139,7 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         rolle: 'Mitarbeiter',
                         filiale_id: filialEingabe,
                         ist_einmalig: false,
-                        benutzt: false
+                        benutzt: false,
+                        thema: 'kik'
                     }]);
 
                 if (keyError) throw keyError;
@@ -150,19 +169,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         .update({ 
                             benutzt: true, 
                             filiale_id: filialEingabe,
-                            bezeichnung: name // Echter Name des Teamleiters als Verantwortlicher
+                            bezeichnung: name 
                         })
                         .eq('id', temporaererLizenzSpeicher.id);
                 }
 
                 const lizenzInfo = {
+                    id: temporaererLizenzSpeicher ? temporaererLizenzSpeicher.id : '',
                     name: name,
                     rolle: 'Teamleitung',
                     filiale_id: filialEingabe,
                     filialname: filialEingabe,
                     personalnummer: personalnummer,
                     pin: pin,
-                    schluessel: temporaererLizenzSpeicher.schluessel_code
+                    schluessel: temporaererLizenzSpeicher ? temporaererLizenzSpeicher.schluessel_code : '',
+                    thema: 'kik'
                 };
 
                 localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
@@ -197,11 +218,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const lizenzInfo = {
+                    id: temporaererLizenzSpeicher ? temporaererLizenzSpeicher.id : '',
                     name: name,
                     rolle: 'Bezirksleitung',
                     personalnummer: personalnummer,
                     pin: pin,
-                    schluessel: temporaererLizenzSpeicher.schluessel_code
+                    schluessel: temporaererLizenzSpeicher ? temporaererLizenzSpeicher.schluessel_code : '',
+                    thema: 'kik'
                 };
 
                 localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
@@ -225,6 +248,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (ansichtAktivierung) ansichtAktivierung.style.display = 'none';
 
+        // Thema des Benutzers anwenden
+        const aktuellesThema = lizenz.thema || 'kik';
+        wendeThemaAn(aktuellesThema);
+        if (auswahlFarbThema) auswahlFarbThema.value = aktuellesThema;
+
         oberflaecheAnRolleAnpassen(lizenz.rolle);
 
         if (lizenz.rolle === 'Teamleitung') {
@@ -242,6 +270,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 oberflaecheAnRolleAnpassen(gewaehlteRolle);
             });
         }
+    }
+
+    // Event-Listener für das Ändern des Farbschemas im Profil
+    if (auswahlFarbThema) {
+        auswahlFarbThema.addEventListener('change', async (e) => {
+            const neuesThema = e.target.value;
+            wendeThemaAn(neuesThema);
+
+            const gespeicherteLizenz = localStorage.getItem('kik_app_lizenz');
+            if (gespeicherteLizenz) {
+                const lizenz = JSON.parse(gespeicherteLizenz);
+                lizenz.thema = neuesThema;
+                localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenz));
+
+                // In Supabase auf dem Account speichern, sofern ID vorhanden
+                if (lizenz.id) {
+                    try {
+                        await window.supabaseVerbindung.client
+                            .from('lizenz_schluessel')
+                            .update({ thema: neuesThema })
+                            .eq('id', lizenz.id);
+                    } catch (err) {
+                        console.error('Fehler beim Speichern des Themes:', err);
+                    }
+                }
+            }
+        });
     }
 
     async function teamleiterDashboardLaden(filialId) {
@@ -274,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const listeBehaelter = document.getElementById('behaelter-tl-mitarbeiter-liste');
         if (!listeBehaelter) return;
 
-        listeBehaelter.innerHTML = '<div style="padding: 12px; text-align: center; color: #6C757D;">Lade Mitarbeiter...</div>';
+        listeBehaelter.innerHTML = '<div class="lade-text">Lade Mitarbeiter...</div>';
 
         try {
             const schluessel = await window.supabaseVerbindung.datenAbrufen('lizenz_schluessel');
@@ -310,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (bearbeitenKarte && bearbeitenIdInput && bearbeitenNameInput) {
                         bearbeitenIdInput.value = id;
                         bearbeitenNameInput.value = name;
-                        bearbeitenKarte.style.display = 'block';
+                        bearbeitenKarte.classList.remove('ausblenden');
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                     }
                 });
@@ -361,7 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (error) throw error;
 
                 alert('Mitarbeiter erfolgreich aktualisiert!');
-                if (bearbeitenKarte) bearbeitenKarte.style.display = 'none';
+                if (bearbeitenKarte) bearbeitenKarte.classList.add('ausblenden');
 
                 const lizenz = JSON.parse(localStorage.getItem('kik_app_lizenz'));
                 teamleiterMitarbeiterLaden(lizenz.filiale_id);
@@ -374,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnMaAbbrechen) {
         btnMaAbbrechen.addEventListener('click', () => {
-            if (bearbeitenKarte) bearbeitenKarte.style.display = 'none';
+            if (bearbeitenKarte) bearbeitenKarte.classList.add('ausblenden');
         });
     }
 
@@ -422,26 +477,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const adminTabBtn = document.getElementById('nav-btn-admin');
         const tlTeamTabBtn = document.getElementById('nav-btn-tl-team');
 
-        if (scannerBereich) scannerBereich.style.display = 'none';
-        if (adminZentrale) adminZentrale.style.display = 'none';
-        if (blZentrale) blZentrale.style.display = 'none';
-        if (tlZentrale) tlZentrale.style.display = 'none';
+        if (scannerBereich) scannerBereich.classList.add('ausblenden');
+        if (adminZentrale) adminZentrale.classList.add('ausblenden');
+        if (blZentrale) blZentrale.classList.add('ausblenden');
+        if (tlZentrale) tlZentrale.classList.add('ausblenden');
 
-        if (adminTabBtn) adminTabBtn.style.display = 'none';
-        if (tlTeamTabBtn) tlTeamTabBtn.style.display = 'none';
+        if (adminTabBtn) adminTabBtn.classList.add('ausblenden');
+        if (tlTeamTabBtn) tlTeamTabBtn.classList.add('ausblenden');
 
         if (rolle === 'Master-Admin') {
-            if (adminZentrale) adminZentrale.style.display = 'block';
-            if (adminTabBtn) adminTabBtn.style.display = 'flex';
+            if (adminZentrale) adminZentrale.classList.remove('ausblenden');
+            if (adminTabBtn) adminTabBtn.classList.remove('ausblenden');
         } else if (rolle === 'Bezirksleitung') {
-            if (blZentrale) blZentrale.style.display = 'block';
+            if (blZentrale) blZentrale.classList.remove('ausblenden');
         } else if (rolle === 'Teamleitung') {
-            // Teamleitung sieht sowohl das TL-Dashboard (Mitarbeiter-Code & QR-Code) als auch den Scanner
-            if (tlZentrale) tlZentrale.style.display = 'block';
-            if (scannerBereich) scannerBereich.style.display = 'block';
-            if (tlTeamTabBtn) tlTeamTabBtn.style.display = 'flex';
+            if (tlZentrale) tlZentrale.classList.remove('ausblenden');
+            if (scannerBereich) scannerBereich.classList.remove('ausblenden');
+            if (tlTeamTabBtn) tlTeamTabBtn.classList.remove('ausblenden');
         } else {
-            if (scannerBereich) scannerBereich.style.display = 'block';
+            if (scannerBereich) scannerBereich.classList.remove('ausblenden');
         }
     }
 

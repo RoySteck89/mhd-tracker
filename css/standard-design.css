@@ -8,16 +8,6 @@
     border-radius: 16px;
 }
 
-#kopfzeile {
-    background-color: #212529;
-    color: #FFFFFF;
-}
-
-#benutzer-bereich {
-    background: rgba(255, 255, 255, 0.2);
-    color: #FFFFFF;
-}
-
 .bereichs-titel {
     color: #6C757D;
 }
@@ -41,27 +31,6 @@
     border-left: 5px solid #DC3545;
 }
 
-/* Status-Banner */
-.status-banner-warnung {
-    background-color: #FFF9E6;
-    color: #856404;
-    border: 1px solid #FFEBAA;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.status-banner-alarm {
-    background-color: #FDF2F2;
-    color: #721C24;
-    border: 1px solid #F5C6CB;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
 /* Navigation Standard */
 #fuss-navigation {
     background: #FFFFFF;
@@ -77,10 +46,7 @@
     font-weight: 700;
 }
 
-/* ==========================================================================
-   NEUES OPTIMIERTES PROFIL-DESIGN (LUFTIG & MODERN)
-   ========================================================================== */
-
+/* Profil-Design */
 .profil-kopfkarte {
     background: linear-gradient(135deg, #003366 0%, #004080 100%);
     color: #FFFFFF;
@@ -121,96 +87,4 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-}
-
-/* Statistik-Grid (Luftig mit gutem Abstand) */
-.profil-stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-top: 4px;
-}
-
-.profil-stat-box {
-    background: #FFFFFF;
-    padding: 18px 14px;
-    border-radius: 12px;
-    text-align: center;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-    border: 1px solid #E9ECEF;
-}
-
-.profil-stat-wert {
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: #003366;
-}
-
-.profil-stat-wert.gruen {
-    color: #28A745;
-}
-
-.profil-stat-label {
-    font-size: 0.8rem;
-    color: #6C757D;
-    margin-top: 4px;
-    font-weight: 600;
-}
-
-/* Info-Liste für Stammdaten */
-.profil-info-liste {
-    background: #FFFFFF;
-    border-radius: 12px;
-    padding: 16px 18px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-    border: 1px solid #E9ECEF;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.profil-info-zeile {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.9rem;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #F1F3F5;
-}
-
-.profil-info-zeile:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-.profil-info-label {
-    color: #6C757D;
-    font-weight: 600;
-}
-
-.profil-info-wert {
-    color: #212529;
-    font-weight: 700;
-}
-
-/* Logout / Aktionen Button */
-.profil-aktionen {
-    margin-top: 8px;
-}
-
-.btn-profil-gefahr {
-    width: 100%;
-    background: #FFF5F5;
-    color: #C92A2A;
-    border: 1px solid #FFC9C9;
-    padding: 14px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    text-align: center;
-}
-
-.btn-profil-gefahr:hover {
-    background: #FFE3E3;
 }
