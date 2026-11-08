@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LIZENZ- & AKTIVIERUNGSLOGIK (VOLLSTÄNDIG ABGESICHERT GEGEN WEISSEN BILDSCHIRM)
+   LIZENZ- & AKTIVIERUNGSLOGIK (VOLLSTÄNDIG STABILISIERT)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Teamleiter Registrierung (Abgesichert)
+    // Teamleiter Registrierung
     if (btnTlRegistrieren) {
         btnTlRegistrieren.addEventListener('click', async () => {
             const filialEingabeEl = document.getElementById('tl-reg-filialname');
@@ -180,16 +180,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                // Filiale eintragen (Ignoriert Duplikate oder legt sie sauber an)
                 await window.supabaseVerbindung.client
                     .from('filialen')
-                    .insert([{ name: filialEingabe, filial_code: filialEingabe }])
-                    .select();
+                    .insert([{ name: filialEingabe, filial_code: filialEingabe }]);
 
                 const block = () => Math.floor(1000 + Math.random() * 9000);
                 const mitarbeiterKeyCode = `KIK-${block()}-${block()}-${block()}`;
 
-                // Standard-Mitarbeiter-Key für die Filiale anlegen
                 await window.supabaseVerbindung.client
                     .from('lizenz_schluessel')
                     .insert([{
@@ -362,6 +359,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (auswahlFarbThema) auswahlFarbThema.value = aktuellesThema;
 
         oberflaecheAnRolleAnpassen(lizenz.rolle);
+
+        // Erzwinge die Hauptansicht, damit sie sichtbar wird
+        const startAnsicht = document.getElementById('ansicht-startseite');
+        if (startAnsicht) {
+            startAnsicht.classList.remove('ausblenden');
+            startAnsicht.style.display = 'block';
+        }
 
         if (lizenz.rolle === 'Teamleitung') {
             teamleiterDashboardLaden(lizenz.filiale_id);
@@ -606,7 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="qr-box">
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=https://mhd-tracker-zeta.vercel.app/" alt="App QR-Code">
                     </div>
-                    <div class="footer">KiK Filial-Management &bull; Einfach mit Personalnummer & PIN einloggen</div>
+                    .footer { margin-top: 40px; font-size: 15px; font-weight: bold; color: #333; }
                     <script>
                         window.onload = function() { window.print(); };
                     </script>

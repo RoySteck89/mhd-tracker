@@ -272,13 +272,13 @@
                         <label for="eingabe-aktivierungsschluessel">Aktivierungsschlüssel</label>
                         <input type="text" id="eingabe-aktivierungsschluessel" placeholder="z. B. KIK-1234-5678-9012" autocomplete="off">
                     </div>
-                    <button id="schaltflaeche-aktivieren" class="schaltflaeche-primaer">
+                    <button type="button" id="schaltflaeche-aktivieren" class="schaltflaeche-primaer">
                         🔑 Schlüssel Prüfen
                     </button>
                 </div>
 
                 <!-- STEP 2A: Registrierung für Teamleiter -->
-                <div id="auth-schritt-tl-registrierung" class="auth-karte ausblenden">
+                <form id="auth-schritt-tl-registrierung" class="auth-karte ausblenden" onsubmit="return false;">
                     <h2>Filiale einrichten</h2>
                     <p class="auth-hinweis">Teamleiter-Key erkannt. Bitte trage deine Filial- und Kontaktdaten ein.</p>
                     
@@ -299,13 +299,13 @@
                         <input type="password" id="tl-reg-pin" placeholder="z. B. 1234" maxlength="4">
                     </div>
 
-                    <button id="schaltflaeche-tl-registrieren" class="schaltflaeche-gruen">
+                    <button type="button" id="schaltflaeche-tl-registrieren" class="schaltflaeche-gruen">
                         💾 Filiale registrieren & Starten
                     </button>
-                </div>
+                </form>
 
                 <!-- STEP 2B: Registrierung für Bezirksleitung -->
-                <div id="auth-schritt-bl-registrierung" class="auth-karte ausblenden">
+                <form id="auth-schritt-bl-registrierung" class="auth-karte ausblenden" onsubmit="return false;">
                     <h2>Bezirk einrichten</h2>
                     <p class="auth-hinweis">Bezirksleitungs-Key erkannt. Bitte trage deine Daten und deinen persönlichen PIN ein.</p>
                     
@@ -322,13 +322,13 @@
                         <input type="password" id="bl-reg-pin" placeholder="z. B. 5678" maxlength="4">
                     </div>
 
-                    <button id="schaltflaeche-bl-registrieren" class="schaltflaeche-gruen">
+                    <button type="button" id="schaltflaeche-bl-registrieren" class="schaltflaeche-gruen">
                         💾 Bezirk registrieren & Starten
                     </button>
-                </div>
+                </form>
 
                 <!-- STEP 2C: Registrierung für Mitarbeiter -->
-                <div id="auth-schritt-ma-registrierung" class="auth-karte ausblenden">
+                <form id="auth-schritt-ma-registrierung" class="auth-karte ausblenden" onsubmit="return false;">
                     <h2>Mitarbeiter-Profil einrichten</h2>
                     <p class="auth-hinweis">Mitarbeiter-Key erkannt. Bitte trage deine Daten ein.</p>
                     
@@ -345,10 +345,10 @@
                         <input type="password" id="ma-reg-pin" placeholder="z. B. 1234" maxlength="4">
                     </div>
 
-                    <button id="schaltflaeche-ma-registrieren" class="schaltflaeche-gruen">
+                    <button type="button" id="schaltflaeche-ma-registrieren" class="schaltflaeche-gruen">
                         💾 Registrieren & Starten
                     </button>
-                </div>
+                </form>
 
             </div>
 
