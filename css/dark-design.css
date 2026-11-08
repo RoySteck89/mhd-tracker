@@ -2,53 +2,61 @@
    4. DARK-DESIGN (Dunkler Modus)
    ========================================================================== */
 
-body {
+body[data-theme="dark"] {
     background-color: #121212 !important;
     color: #E0E0E0 !important;
 }
 
-#app-container {
+body[data-theme="dark"] #app-container {
     background-color: #1E1E1E !important;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
-.karten-bereich,
-.erfassungs-karte,
-.auth-karte,
-.liste-karte,
-.admin-statistik-karte,
-.profil-stat-box,
-.profil-info-liste {
+body[data-theme="dark"] .app-header {
+    background-color: #1F1F1F !important;
+    border-bottom: 1px solid #333333;
+}
+
+body[data-theme="dark"] .karten-bereich,
+body[data-theme="dark"] .erfassungs-karte,
+body[data-theme="dark"] .auth-karte,
+body[data-theme="dark"] .liste-karte,
+body[data-theme="dark"] .admin-statistik-karte,
+body[data-theme="dark"] .profil-stat-box,
+body[data-theme="dark"] .profil-info-liste,
+body[data-theme="dark"] .profil-kopfkarte {
     background: #2D2D2D !important;
     color: #E0E0E0 !important;
     border-color: #404040 !important;
 }
 
-.bereichs-titel,
-.profil-info-label,
-.admin-stat-label {
+body[data-theme="dark"] .bereichs-titel,
+body[data-theme="dark"] .profil-info-label,
+body[data-theme="dark"] .admin-stat-label {
     color: #A0A0A0 !important;
 }
 
-input, select, textarea {
+body[data-theme="dark"] input, 
+body[data-theme="dark"] select, 
+body[data-theme="dark"] textarea {
     background: #333333 !important;
     color: #FFFFFF !important;
     border-color: #555555 !important;
 }
 
-input::placeholder {
+body[data-theme="dark"] input::placeholder {
     color: #888888 !important;
 }
 
-#fuss-navigation {
+body[data-theme="dark"] #fuss-navigation {
     background: #2D2D2D !important;
     border-top: 1px solid #404040 !important;
 }
 
-.nav-schaltflaeche {
+body[data-theme="dark"] .nav-schaltflaeche {
     color: #A0A0A0 !important;
 }
 
-.nav-schaltflaeche.aktiv {
+body[data-theme="dark"] .nav-schaltflaeche.aktiv {
     color: #FFC107 !important;
 }

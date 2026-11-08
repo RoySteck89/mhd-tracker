@@ -1,62 +1,40 @@
 /* ==========================================================================
-   3. KIK-THEMA (Spezifische Branding-Farben)
+   3. KIK-KLASSIK THEMA (Traditionelles KiK Corporate Rot / Weiß)
    ========================================================================== */
 
-.schaltflaeche-primaer {
-    background-color: #003366;
-    color: #FFFFFF;
+/* Kopfzeile im klassischen KiK-Rot */
+body[data-theme="kik"] .app-header {
+    background-color: #CC0000 !important;
+    color: #FFFFFF !important;
 }
 
-.schaltflaeche-primaer:hover {
-    background-color: #002244;
+/* Primäre Schaltflächen im Rot-Ton */
+body[data-theme="kik"] .schaltflaeche-primaer {
+    background-color: #CC0000 !important;
+    color: #FFFFFF !important;
 }
 
-.nav-schaltflaeche.aktiv {
-    color: #003366 !important;
+body[data-theme="kik"] .schaltflaeche-primaer:hover {
+    background-color: #990000 !important;
 }
 
-/* Moderner, sauberer Header-Bereich */
-.app-header {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px 16px;
-    background-color: #003366; /* KiK-Blau */
-    color: white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+/* Aktive Navigationsschaltfläche unten */
+body[data-theme="kik"] .nav-schaltflaeche.aktiv {
+    color: #CC0000 !important;
 }
 
-.header-titel {
-    font-size: 1.15rem;
-    font-weight: bold;
-    letter-spacing: 0.5px;
+/* Admin-Subtab aktiv */
+body[data-theme="kik"] .admin-subtab-btn.aktiv {
+    background-color: #CC0000 !important;
+    color: #FFFFFF !important;
 }
 
-.header-rechte-seite {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    width: 100%;
+/* Profil-Kopfkarte im KiK-Rot Verlauf */
+body[data-theme="kik"] .profil-kopfkarte {
+    background: linear-gradient(135deg, #CC0000 0%, #990000 100%) !important;
 }
 
-.benutzer-badge {
-    background: rgba(255, 255, 255, 0.15);
-    padding: 5px 10px;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.view-switcher {
-    padding: 5px 8px;
-    border-radius: 6px;
-    border: none;
-    background: #ffc107;
-    color: #000;
-    font-weight: bold;
-    font-size: 0.85rem;
-    cursor: pointer;
+body[data-theme="kik"] .profil-rolle-badge {
+    background: #FFFFFF !important;
+    color: #CC0000 !important;
 }

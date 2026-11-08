@@ -1,5 +1,5 @@
 /* ==========================================================================
-   2. STANDARD-DESIGN (Neutrale Optik, Karten & Signalfarben)
+   2. STANDARD-DESIGN (Blau / Gelb & Neutrale Karten)
    ========================================================================== */
 
 #app-container {
@@ -22,6 +22,62 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
+/* Header in Blau */
+.app-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px;
+    background-color: #003366 !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.header-titel {
+    font-size: 1.15rem;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.header-rechte-seite {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+}
+
+.benutzer-badge {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.view-switcher {
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: none;
+    background: #FFC107;
+    color: #000;
+    font-weight: bold;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+/* Primäre Schaltflächen in Blau */
+.schaltflaeche-primaer {
+    background-color: #003366 !important;
+    color: #FFFFFF !important;
+}
+
+.schaltflaeche-primaer:hover {
+    background-color: #002244 !important;
+}
+
 /* Signalfarben-Bordüren für Artikel-Status */
 .artikel-karte.status-warnung {
     border-left: 5px solid #FFC107;
@@ -42,7 +98,7 @@
 }
 
 .nav-schaltflaeche.aktiv {
-    color: #0D6EFD;
+    color: #003366 !important;
     font-weight: 700;
 }
 
