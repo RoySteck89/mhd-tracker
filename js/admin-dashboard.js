@@ -306,8 +306,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (adminAnsichtTab) {
         adminAnsichtTab.addEventListener('click', () => {
             schluesselLaden();
-        });
-    }
+			adminStartseiteLaden(); // <--- HIER ERGÄNZEN
+				});
+			}
+
+			// Direkt beim Start im Admin-Modus einmalig ausführen
+			adminStartseiteLaden(); // <--- HIER ERGÄNZEN
+				});
+			}
 
     console.log('Admin-Dashboard geladen.');
 });
