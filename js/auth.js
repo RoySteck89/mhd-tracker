@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LIZENZ- & AKTIVIERUNGSLOGIK (KOMPLETT & FEHLERFREI)
+   LIZENZ- & AKTIVIERUNGSLOGIK (ROBUST & MIT AUTOMATISCHEM SESSION-CHECK)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -43,18 +43,32 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.setAttribute('data-theme', themaName);
     }
 
+    function zeigeAktivierung() {
+        if (ansichtAktivierung) ansichtAktivierung.classList.remove('ausblenden');
+        if (ansichtAktivierung) ansichtAktivierung.style.display = 'flex';
+        if (schrittCode) schrittCode.style.display = 'block';
+        if (schrittTlReg) schrittTlReg.style.display = 'none';
+        if (schrittBlReg) schrittBlReg.style.display = 'none';
+        if (benutzerAnzeige) benutzerAnzeige.textContent = 'Nicht aktiviert';
+    }
+
     function pruefeAktivierung() {
         const gespeicherteLizenz = localStorage.getItem('kik_app_lizenz');
 
         if (!gespeicherteLizenz) {
-            if (ansichtAktivierung) ansichtAktivierung.style.display = 'flex';
-            if (schrittCode) schrittCode.style.display = 'block';
-            if (schrittTlReg) schrittTlReg.style.display = 'none';
-            if (schrittBlReg) schrittBlReg.style.display = 'none';
-            if (benutzerAnzeige) benutzerAnzeige.textContent = 'Nicht aktiviert';
+            zeigeAktivierung();
         } else {
-            const lizenzData = JSON.parse(gespeicherteLizenz);
-            initialisiereAppSession(lizenzData);
+            try {
+                const lizenzData = JSON.parse(gespeicherteLizenz);
+                if (!lizenzData || !lizenzData.rolle) {
+                    throw new Error("Ungültige Lizenz-Struktur im Speicher.");
+                }
+                initialisiereAppSession(lizenzData);
+            } catch (err) {
+                console.error('Fehler beim Laden der Session, setze zurück:', err);
+                localStorage.removeItem('kik_app_lizenz');
+                zeigeAktivierung();
+            }
         }
     }
 
@@ -246,7 +260,10 @@ document.addEventListener('DOMContentLoaded', () => {
             benutzerAnzeige.innerHTML = `👑 <strong>${lizenz.name}</strong> (${lizenz.rolle})`;
         }
 
-        if (ansichtAktivierung) ansichtAktivierung.style.display = 'none';
+        if (ansichtAktivierung) {
+            ansichtAktivierung.style.display = 'none';
+            ansichtAktivierung.classList.add('ausblenden');
+        }
 
         // Thema des Benutzers anwenden
         const aktuellesThema = lizenz.thema || 'kik';
@@ -261,14 +278,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (lizenz.rolle === 'Master-Admin' && viewSwitcher) {
+            viewSwitcher.classList.remove('ausblenden');
             viewSwitcher.style.display = 'inline-block';
             viewSwitcher.value = 'Master-Admin';
 
-            viewSwitcher.addEventListener('change', (e) => {
-                const gewaehlteRolle = e.target.value;
-                window.aktiveSimulierteRolle = gewaehlteRolle;
-                oberflaecheAnRolleAnpassen(gewaehlteRolle);
-            });
+            // Event-Listener nur einmalig binden
+            if (!viewSwitcher.dataset.bound) {
+                viewSwitcher.dataset.bound = 'true';
+                viewSwitcher.addEventListener('change', (e) => {
+                    const gewaehlteRolle = e.target.value;
+                    window.aktiveSimulierteRolle = gewaehlteRolle;
+                    oberflaecheAnRolleAnpassen(gewaehlteRolle);
+                });
+            }
         }
     }
 
@@ -476,6 +498,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const adminTabBtn = document.getElementById('nav-btn-admin');
         const tlTeamTabBtn = document.getElementById('nav-btn-tl-team');
 
+        // Erst alles sauber ausblenden
         if (scannerBereich) scannerBereich.classList.add('ausblenden');
         if (adminZentrale) adminZentrale.classList.add('ausblenden');
         if (blZentrale) blZentrale.classList.add('ausblenden');
@@ -484,6 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (adminTabBtn) adminTabBtn.classList.add('ausblenden');
         if (tlTeamTabBtn) tlTeamTabBtn.classList.add('ausblenden');
 
+        // Passend zur Rolle einblenden
         if (rolle === 'Master-Admin') {
             if (adminZentrale) adminZentrale.classList.remove('ausblenden');
             if (adminTabBtn) adminTabBtn.classList.remove('ausblenden');
