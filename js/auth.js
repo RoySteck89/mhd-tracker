@@ -498,27 +498,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const adminTabBtn = document.getElementById('nav-btn-admin');
         const tlTeamTabBtn = document.getElementById('nav-btn-tl-team');
 
-        // Erst alles sauber ausblenden
-        if (scannerBereich) scannerBereich.classList.add('ausblenden');
-        if (adminZentrale) adminZentrale.classList.add('ausblenden');
-        if (blZentrale) blZentrale.classList.add('ausblenden');
-        if (tlZentrale) tlZentrale.classList.add('ausblenden');
+        // Sicherheitshalber alle Bereiche ausblenden
+        if (scannerBereich) { scannerBereich.style.display = 'none'; scannerBereich.classList.add('ausblenden'); }
+        if (adminZentrale) { adminZentrale.style.display = 'none'; adminZentrale.classList.add('ausblenden'); }
+        if (blZentrale) { blZentrale.style.display = 'none'; blZentrale.classList.add('ausblenden'); }
+        if (tlZentrale) { tlZentrale.style.display = 'none'; tlZentrale.classList.add('ausblenden'); }
 
-        if (adminTabBtn) adminTabBtn.classList.add('ausblenden');
-        if (tlTeamTabBtn) tlTeamTabBtn.classList.add('ausblenden');
+        if (adminTabBtn) { adminTabBtn.style.display = 'none'; adminTabBtn.classList.add('ausblenden'); }
+        if (tlTeamTabBtn) { tlTeamTabBtn.style.display = 'none'; tlTeamTabBtn.classList.add('ausblenden'); }
 
-        // Passend zur Rolle einblenden
-        if (rolle === 'Master-Admin') {
-            if (adminZentrale) adminZentrale.classList.remove('ausblenden');
-            if (adminTabBtn) adminTabBtn.classList.remove('ausblenden');
-        } else if (rolle === 'Bezirksleitung') {
-            if (blZentrale) blZentrale.classList.remove('ausblenden');
-        } else if (rolle === 'Teamleitung') {
-            if (tlZentrale) tlZentrale.classList.remove('ausblenden');
-            if (scannerBereich) scannerBereich.classList.remove('ausblenden');
-            if (tlTeamTabBtn) tlTeamTabBtn.classList.remove('ausblenden');
+        // Je nach aktiver/simulierter Rolle die passenden Container anzeigen
+        const zielRolle = window.aktiveSimulierteRolle || rolle;
+
+        if (zielRolle === 'Master-Admin') {
+            if (adminZentrale) { adminZentrale.style.display = 'block'; adminZentrale.classList.remove('ausblenden'); }
+            if (adminTabBtn) { adminTabBtn.style.display = 'flex'; adminTabBtn.classList.remove('ausblenden'); }
+        } else if (zielRolle === 'Bezirksleitung') {
+            if (blZentrale) { blZentrale.style.display = 'block'; blZentrale.classList.remove('ausblenden'); }
+        } else if (zielRolle === 'Teamleitung') {
+            if (tlZentrale) { tlZentrale.style.display = 'block'; tlZentrale.classList.remove('ausblenden'); }
+            if (scannerBereich) { scannerBereich.style.display = 'block'; scannerBereich.classList.remove('ausblenden'); }
+            if (tlTeamTabBtn) { tlTeamTabBtn.style.display = 'flex'; tlTeamTabBtn.classList.remove('ausblenden'); }
         } else {
-            if (scannerBereich) scannerBereich.classList.remove('ausblenden');
+            if (scannerBereich) { scannerBereich.style.display = 'block'; scannerBereich.classList.remove('ausblenden'); }
         }
     }
 
