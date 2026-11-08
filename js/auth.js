@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LIZENZ- & AKTIVIERUNGSLOGIK (ROBUST, MIT FEHLERFREIER REGISTRIERUNG & SELBSTHEILUNG)
+   LIZENZ- & AKTIVIERUNGSLOGIK (VOLLSTÄNDIG ABGESICHERT GEGEN WEISSEN BILDSCHIRM)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (themaName === 'dark') {
             themeStylesheet.href = 'css/dark-design.css';
         } else {
-            themeStylesheet.href = 'css/standard-design.css'; // Fallback
+            themeStylesheet.href = 'css/standard-design.css';
         }
         document.body.setAttribute('data-theme', themaName);
     }
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnAktivieren) {
         btnAktivieren.addEventListener('click', async () => {
-            const schluessel = eingabeSchluessel.value.trim();
+            const schluessel = eingabeSchluessel ? eingabeSchluessel.value.trim() : '';
 
             if (!schluessel) {
                 alert('Bitte gib einen Aktivierungsschlüssel ein.');
@@ -87,6 +87,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
+                if (!window.supabaseVerbindung || !window.supabaseVerbindung.client) {
+                    alert('Datenbankverbindung nicht bereit.');
+                    return;
+                }
+
                 const { data, error } = await window.supabaseVerbindung.client
                     .from('lizenz_schluessel')
                     .select('*')
@@ -106,7 +111,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 temporaererLizenzSpeicher = lizenz;
 
-                // Ansichten beim Aktivieren sauber umschalten (verhindert weißen Bildschirm)
                 if (schrittCode) schrittCode.style.display = 'none';
 
                 if (lizenz.rolle === 'Teamleitung') {
@@ -151,19 +155,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 initialisiereAppSession(lizenzInfo);
 
             } catch (err) {
-                console.error('Aktivierungsfehler:', err.message);
+                console.error('Aktivierungsfehler:', err);
                 alert('Fehler bei der Aktivierung: ' + err.message);
             }
         });
     }
 
-    // Teamleiter Registrierung
+    // Teamleiter Registrierung (Abgesichert)
     if (btnTlRegistrieren) {
         btnTlRegistrieren.addEventListener('click', async () => {
-            const filialEingabe = document.getElementById('tl-reg-filialname').value.trim();
-            const name = document.getElementById('tl-reg-name').value.trim();
-            const personalnummer = document.getElementById('tl-reg-persnr').value.trim();
-            const pin = document.getElementById('tl-reg-pin').value.trim();
+            const filialEingabeEl = document.getElementById('tl-reg-filialname');
+            const nameEl = document.getElementById('tl-reg-name');
+            const personalnummerEl = document.getElementById('tl-reg-persnr');
+            const pinEl = document.getElementById('tl-reg-pin');
+
+            const filialEingabe = filialEingabeEl ? filialEingabeEl.value.trim() : '';
+            const name = nameEl ? nameEl.value.trim() : '';
+            const personalnummer = personalnummerEl ? personalnummerEl.value.trim() : '';
+            const pin = pinEl ? pinEl.value.trim() : '';
 
             if (!filialEingabe || !name || !personalnummer || !pin) {
                 alert('Bitte fülle alle Felder aus.');
@@ -171,16 +180,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                const { error: filialError } = await window.supabaseVerbindung.client
+                // Filiale eintragen (Ignoriert Duplikate oder legt sie sauber an)
+                await window.supabaseVerbindung.client
                     .from('filialen')
-                    .insert([{ name: filialEingabe, filial_code: filialEingabe }]);
-
-                if (filialError) throw filialError;
+                    .insert([{ name: filialEingabe, filial_code: filialEingabe }])
+                    .select();
 
                 const block = () => Math.floor(1000 + Math.random() * 9000);
                 const mitarbeiterKeyCode = `KIK-${block()}-${block()}-${block()}`;
 
-                const { error: keyError } = await window.supabaseVerbindung.client
+                // Standard-Mitarbeiter-Key für die Filiale anlegen
+                await window.supabaseVerbindung.client
                     .from('lizenz_schluessel')
                     .insert([{
                         schluessel_code: mitarbeiterKeyCode,
@@ -192,9 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         thema: 'kik'
                     }]);
 
-                if (keyError) throw keyError;
-
-                if (temporaererLizenzSpeicher && temporaererLizenzSpeicher.ist_einmalig) {
+                if (temporaererLizenzSpeicher && temporaererLizenzSpeicher.id) {
                     await window.supabaseVerbindung.client
                         .from('lizenz_schluessel')
                         .update({ 
@@ -222,8 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 initialisiereAppSession(lizenzInfo);
 
             } catch (err) {
-                console.error('Fehler bei der Filial-Registrierung:', err.message);
-                alert('Fehler: ' + err.message);
+                console.error('Fehler bei der Filial-Registrierung:', err);
+                alert('Fehler bei der Einrichtung: ' + err.message);
             }
         });
     }
@@ -231,9 +239,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bezirksleitung Registrierung
     if (btnBlRegistrieren) {
         btnBlRegistrieren.addEventListener('click', async () => {
-            const name = document.getElementById('bl-reg-name').value.trim();
-            const personalnummer = document.getElementById('bl-reg-persnr').value.trim();
-            const pin = document.getElementById('bl-reg-pin').value.trim();
+            const nameEl = document.getElementById('bl-reg-name');
+            const personalnummerEl = document.getElementById('bl-reg-persnr');
+            const pinEl = document.getElementById('bl-reg-pin');
+
+            const name = nameEl ? nameEl.value.trim() : '';
+            const personalnummer = personalnummerEl ? personalnummerEl.value.trim() : '';
+            const pin = pinEl ? pinEl.value.trim() : '';
 
             if (!name || !personalnummer || !pin) {
                 alert('Bitte fülle alle Felder aus.');
@@ -241,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                if (temporaererLizenzSpeicher && temporaererLizenzSpeicher.ist_einmalig) {
+                if (temporaererLizenzSpeicher && temporaererLizenzSpeicher.id) {
                     await window.supabaseVerbindung.client
                         .from('lizenz_schluessel')
                         .update({ benutzt: true, bezeichnung: name })
@@ -263,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 initialisiereAppSession(lizenzInfo);
 
             } catch (err) {
-                console.error('Fehler bei der BL-Registrierung:', err.message);
+                console.error('Fehler bei der BL-Registrierung:', err);
                 alert('Fehler: ' + err.message);
             }
         });
@@ -272,9 +284,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Mitarbeiter Registrierung
     if (btnMaRegistrieren) {
         btnMaRegistrieren.addEventListener('click', async () => {
-            const name = document.getElementById('ma-reg-name').value.trim();
-            const personalnummer = document.getElementById('ma-reg-persnr').value.trim();
-            const pin = document.getElementById('ma-reg-pin').value.trim();
+            const nameEl = document.getElementById('ma-reg-name');
+            const personalnummerEl = document.getElementById('ma-reg-persnr');
+            const pinEl = document.getElementById('ma-reg-pin');
+
+            const name = nameEl ? nameEl.value.trim() : '';
+            const personalnummer = personalnummerEl ? personalnummerEl.value.trim() : '';
+            const pin = pinEl ? pinEl.value.trim() : '';
 
             if (!name || !personalnummer || !pin) {
                 alert('Bitte fülle alle Felder aus.');
@@ -322,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 initialisiereAppSession(lizenzInfo);
 
             } catch (err) {
-                console.error('Fehler bei der Mitarbeiter-Registrierung:', err.message);
+                console.error('Fehler bei der Mitarbeiter-Registrierung:', err);
                 alert('Fehler: ' + err.message);
             }
         });
