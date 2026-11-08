@@ -310,10 +310,5 @@ document.addEventListener('DOMContentLoaded', () => {
 				});
 			}
 
-			// Direkt beim Start im Admin-Modus einmalig ausführen
-			adminStartseiteLaden(); // <--- HIER ERGÄNZEN
-				});
-			}
-
     console.log('Admin-Dashboard geladen.');
 });
