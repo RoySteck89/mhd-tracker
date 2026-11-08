@@ -398,7 +398,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (rolle === 'Bezirksleitung') {
             if (blZentrale) blZentrale.style.display = 'block';
         } else if (rolle === 'Teamleitung') {
+            // Teamleitung sieht die Filialzentrale UND den Barcode-Scanner/Erfassungsbereich
             if (tlZentrale) tlZentrale.style.display = 'block';
+            if (scannerBereich) scannerBereich.style.display = 'block';
             if (tlTeamTabBtn) tlTeamTabBtn.style.display = 'flex';
         } else {
             if (scannerBereich) scannerBereich.style.display = 'block';
