@@ -499,9 +499,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const schluessel = await window.supabaseVerbindung.datenAbrufen('lizenz_schluessel');
             const saubereFilialId = filialId.toString().trim().toLowerCase();
 
-            // Robuster Filter: Prüft Filial-ID unabhängig von Groß-/Kleinschreibung und ob es ein Mitarbeiter ist
+            // Korrigierter, robuster Filter ohne Syntaxfehler
             const eingelösteKeys = schluessel.filter(k => {
-                constkFiliale = k.filiale_id ? k.filiale_id.toString().trim().toLowerCase() : '';
+                const kFiliale = k.filiale_id ? k.filiale_id.toString().trim().toLowerCase() : '';
                 return kFiliale === saubereFilialId && k.rolle === 'Mitarbeiter';
             });
 
