@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LIZENZ- & AKTIVIERUNGSLOGIK (KOMPLETT & AKTUALISIERT MIT THEMEN-SYNC)
+   LIZENZ- & AKTIVIERUNGSLOGIK (KOMPLETT & FEHLERFREI)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -36,9 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (themaName === 'standard') {
             themeStylesheet.href = 'css/standard-design.css';
         } else if (themaName === 'dark') {
-            themeStylesheet.href = 'css/dark-design.css'; // Falls vorhanden, sonst Standard
+            themeStylesheet.href = 'css/dark-design.css';
         } else {
-            themeStylesheet.href = 'css/standard-design.css'; // Standard-Fallback für KiK
+            themeStylesheet.href = 'css/standard-design.css'; // Fallback
         }
         document.body.setAttribute('data-theme', themaName);
     }
@@ -284,7 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 lizenz.thema = neuesThema;
                 localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenz));
 
-                // In Supabase auf dem Account speichern, sofern ID vorhanden
                 if (lizenz.id) {
                     try {
                         await window.supabaseVerbindung.client

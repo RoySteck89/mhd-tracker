@@ -1,0 +1,54 @@
+/* ==========================================================================
+   4. DARK-DESIGN (Dunkler Modus)
+   ========================================================================== */
+
+body {
+    background-color: #121212 !important;
+    color: #E0E0E0 !important;
+}
+
+#app-container {
+    background-color: #1E1E1E !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.karten-bereich,
+.erfassungs-karte,
+.auth-karte,
+.liste-karte,
+.admin-statistik-karte,
+.profil-stat-box,
+.profil-info-liste {
+    background: #2D2D2D !important;
+    color: #E0E0E0 !important;
+    border-color: #404040 !important;
+}
+
+.bereichs-titel,
+.profil-info-label,
+.admin-stat-label {
+    color: #A0A0A0 !important;
+}
+
+input, select, textarea {
+    background: #333333 !important;
+    color: #FFFFFF !important;
+    border-color: #555555 !important;
+}
+
+input::placeholder {
+    color: #888888 !important;
+}
+
+#fuss-navigation {
+    background: #2D2D2D !important;
+    border-top: 1px solid #404040 !important;
+}
+
+.nav-schaltflaeche {
+    color: #A0A0A0 !important;
+}
+
+.nav-schaltflaeche.aktiv {
+    color: #FFC107 !important;
+}
