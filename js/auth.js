@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LIZENZ- & AKTIVIERUNGSLOGIK (VOLLSTÄNDIG STABILISIERT)
+   LIZENZ- & AKTIVIERUNGSLOGIK (VOLLSTÄNDIG STABILISIERT & CSS-ERZWUNGEN)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -19,14 +19,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const benutzerAnzeige = document.getElementById('benutzer-anzeige');
     const viewSwitcher = document.getElementById('admin-view-switcher');
 
-    // Elemente für Mitarbeiter-Bearbeitung durch Teamleiter
     const bearbeitenKarte = document.getElementById('tl-mitarbeiter-bearbeiten-karte');
     const bearbeitenIdInput = document.getElementById('tl-bearbeiten-id');
     const bearbeitenNameInput = document.getElementById('tl-bearbeiten-name');
     const btnMaSpeichern = document.getElementById('schaltflaeche-ma-speichern');
     const btnMaAbbrechen = document.getElementById('schaltflaeche-ma-abbrechen');
 
-    // Thema / Design Auswahl im Profil
     const auswahlFarbThema = document.getElementById('auswahl-farb-thema');
 
     let temporaererLizenzSpeicher = null;
@@ -161,7 +159,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Teamleiter Registrierung
     if (btnTlRegistrieren) {
         btnTlRegistrieren.addEventListener('click', async () => {
             const filialEingabeEl = document.getElementById('tl-reg-filialname');
@@ -233,7 +230,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Bezirksleitung Registrierung
     if (btnBlRegistrieren) {
         btnBlRegistrieren.addEventListener('click', async () => {
             const nameEl = document.getElementById('bl-reg-name');
@@ -278,7 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Mitarbeiter Registrierung
     if (btnMaRegistrieren) {
         btnMaRegistrieren.addEventListener('click', async () => {
             const nameEl = document.getElementById('ma-reg-name');
@@ -354,18 +349,19 @@ document.addEventListener('DOMContentLoaded', () => {
             ansichtAktivierung.classList.add('ausblenden');
         }
 
+        // HIER WIRD DIE HAUPTANSICHT EXPLIZIT ERZWUNGEN (VERHINDERT WEISSEN BILDSCHIRM)
+        const startAnsicht = document.getElementById('ansicht-startseite');
+        if (startAnsicht) {
+            startAnsicht.classList.remove('ausblenden');
+            startAnsicht.classList.add('aktiv');
+            startAnsicht.style.display = 'flex';
+        }
+
         const aktuellesThema = lizenz.thema || 'kik';
         wendeThemaAn(aktuellesThema);
         if (auswahlFarbThema) auswahlFarbThema.value = aktuellesThema;
 
         oberflaecheAnRolleAnpassen(lizenz.rolle);
-
-        // Erzwinge die Hauptansicht, damit sie sichtbar wird
-        const startAnsicht = document.getElementById('ansicht-startseite');
-        if (startAnsicht) {
-            startAnsicht.classList.remove('ausblenden');
-            startAnsicht.style.display = 'block';
-        }
 
         if (lizenz.rolle === 'Teamleitung') {
             teamleiterDashboardLaden(lizenz.filiale_id);
@@ -610,7 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="qr-box">
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=https://mhd-tracker-zeta.vercel.app/" alt="App QR-Code">
                     </div>
-                    .footer { margin-top: 40px; font-size: 15px; font-weight: bold; color: #333; }
+                    <div class="footer">KiK Filial-Management &bull; Einfach mit Personalnummer & PIN einloggen</div>
                     <script>
                         window.onload = function() { window.print(); };
                     </script>
@@ -631,6 +627,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tlTeamTabBtn = document.getElementById('nav-btn-tl-team');
 
         if (scannerBereich) { scannerBereich.style.display = 'none'; scannerBereich.classList.add('ausblenden'); }
+        if (adminZentrale) { adminZentrum = adminZentrale; adminZentrale.style.display = 'none'; adminZentrale.classList.add('ausblenden'); }
         if (adminZentrale) { adminZentrale.style.display = 'none'; adminZentrale.classList.add('ausblenden'); }
         if (blZentrale) { blZentrale.style.display = 'none'; blZentrale.classList.add('ausblenden'); }
         if (tlZentrale) { tlZentrale.style.display = 'none'; tlZentrale.classList.add('ausblenden'); }
