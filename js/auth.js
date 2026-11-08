@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LIZENZ- & AKTIVIERUNGSLOGIK (SAUBER GETRENNT VON CSS)
+   LIZENZ- & AKTIVIERUNGSLOGIK (KOMPLETT & AKTUALISIERT)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -107,25 +107,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Teamleiter Registrierung
+    // Teamleiter Registrierung (mit Filialnummer & Standort z.B. "2053 Dietmannsried")
     if (btnTlRegistrieren) {
         btnTlRegistrieren.addEventListener('click', async () => {
-            const filialname = document.getElementById('tl-reg-filialname').value.trim();
+            const filialEingabe = document.getElementById('tl-reg-filialname').value.trim();
             const name = document.getElementById('tl-reg-name').value.trim();
             const personalnummer = document.getElementById('tl-reg-persnr').value.trim();
             const pin = document.getElementById('tl-reg-pin').value.trim();
 
-            if (!filialname || !name || !personalnummer || !pin) {
+            if (!filialEingabe || !name || !personalnummer || !pin) {
                 alert('Bitte fülle alle Felder aus.');
                 return;
             }
 
-            const filialCode = 'FIL-' + Math.floor(1000 + Math.random() * 9000);
-
             try {
+                // Filiale direkt in Supabase speichern mit filial_code
                 const { error: filialError } = await window.supabaseVerbindung.client
                     .from('filialen')
-                    .insert([{ name: filialname, filial_code: filialCode }]);
+                    .insert([{ name: filialEingabe, filial_code: filialEingabe }]);
 
                 if (filialError) throw filialError;
 
@@ -136,9 +135,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     .from('lizenz_schluessel')
                     .insert([{
                         schluessel_code: mitarbeiterKeyCode,
-                        bezeichnung: `Mitarbeiter-Key für ${filialname}`,
+                        bezeichnung: `Mitarbeiter-Key für ${filialEingabe}`,
                         rolle: 'Mitarbeiter',
-                        filiale_id: filialCode,
+                        filiale_id: filialEingabe,
                         ist_einmalig: false,
                         benutzt: false
                     }]);
@@ -148,22 +147,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (temporaererLizenzSpeicher && temporaererLizenzSpeicher.ist_einmalig) {
                     await window.supabaseVerbindung.client
                         .from('lizenz_schluessel')
-                        .update({ benutzt: true, filiale_id: filialCode })
+                        .update({ benutzt: true, filiale_id: filialEingabe })
                         .eq('id', temporaererLizenzSpeicher.id);
                 }
 
                 const lizenzInfo = {
                     name: name,
                     rolle: 'Teamleitung',
-                    filiale_id: filialCode,
-                    filialname: filialname,
+                    filiale_id: filialEingabe,
+                    filialname: filialEingabe,
                     personalnummer: personalnummer,
                     pin: pin,
                     schluessel: temporaererLizenzSpeicher.schluessel_code
                 };
 
                 localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
-                alert(`Filiale "${filialname}" erfolgreich eingerichtet!`);
+                alert(`Filiale "${filialEingabe}" erfolgreich eingerichtet!`);
                 initialisiereAppSession(lizenzInfo);
 
             } catch (err) {
@@ -173,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Bezirksleitung Registrierung (mit eigenem PIN)
+    // Bezirksleitung Registrierung
     if (btnBlRegistrieren) {
         btnBlRegistrieren.addEventListener('click', async () => {
             const name = document.getElementById('bl-reg-name').value.trim();
@@ -398,7 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (rolle === 'Bezirksleitung') {
             if (blZentrale) blZentrale.style.display = 'block';
         } else if (rolle === 'Teamleitung') {
-            // Teamleitung sieht die Filialzentrale UND den Barcode-Scanner/Erfassungsbereich
+            // Teamleitung sieht sowohl das TL-Dashboard (Mitarbeiter-Code) als auch den Scanner
             if (tlZentrale) tlZentrale.style.display = 'block';
             if (scannerBereich) scannerBereich.style.display = 'block';
             if (tlTeamTabBtn) tlTeamTabBtn.style.display = 'flex';
