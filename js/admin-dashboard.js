@@ -302,13 +302,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Sofort beim Laden des Scripts einmalig ausführen
+    adminStartseiteLaden();
+
     const adminAnsichtTab = document.querySelector('[data-ziel="ansicht-admin-dashboard"]');
     if (adminAnsichtTab) {
         adminAnsichtTab.addEventListener('click', () => {
             schluesselLaden();
-			adminStartseiteLaden(); // <--- HIER ERGÄNZEN
-				});
-			}
+            adminStartseiteLaden();
+        });
+    }
 
     console.log('Admin-Dashboard geladen.');
 });
