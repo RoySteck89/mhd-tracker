@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LIZENZ- & AKTIVIERUNGSLOGIK (ROBUST, MIT SELBSTHEILUNG FÜR MITARBEITER-KEYS)
+   LIZENZ- & AKTIVIERUNGSLOGIK (ROBUST, MIT FEHLERFREIER REGISTRIERUNG & SELBSTHEILUNG)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -7,12 +7,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const schrittCode = document.getElementById('auth-schritt-code');
     const schrittTlReg = document.getElementById('auth-schritt-tl-registrierung');
     const schrittBlReg = document.getElementById('auth-schritt-bl-registrierung');
+    const schrittMaReg = document.getElementById('auth-schritt-ma-registrierung');
     
     const btnAktivieren = document.getElementById('schaltflaeche-aktivieren');
     const eingabeSchluessel = document.getElementById('eingabe-aktivierungsschluessel');
     
     const btnTlRegistrieren = document.getElementById('schaltflaeche-tl-registrieren');
     const btnBlRegistrieren = document.getElementById('schaltflaeche-bl-registrieren');
+    const btnMaRegistrieren = document.getElementById('schaltflaeche-ma-registrieren');
     
     const benutzerAnzeige = document.getElementById('benutzer-anzeige');
     const viewSwitcher = document.getElementById('admin-view-switcher');
@@ -44,11 +46,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function zeigeAktivierung() {
-        if (ansichtAktivierung) ansichtAktivierung.classList.remove('ausblenden');
-        if (ansichtAktivierung) ansichtAktivierung.style.display = 'flex';
+        if (ansichtAktivierung) {
+            ansichtAktivierung.classList.remove('ausblenden');
+            ansichtAktivierung.style.display = 'flex';
+        }
         if (schrittCode) schrittCode.style.display = 'block';
         if (schrittTlReg) schrittTlReg.style.display = 'none';
         if (schrittBlReg) schrittBlReg.style.display = 'none';
+        if (schrittMaReg) schrittMaReg.style.display = 'none';
         if (benutzerAnzeige) benutzerAnzeige.textContent = 'Nicht aktiviert';
     }
 
@@ -101,15 +106,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 temporaererLizenzSpeicher = lizenz;
 
+                // Ansichten beim Aktivieren sauber umschalten (verhindert weißen Bildschirm)
+                if (schrittCode) schrittCode.style.display = 'none';
+
                 if (lizenz.rolle === 'Teamleitung') {
-                    if (schrittCode) schrittCode.style.display = 'none';
                     if (schrittTlReg) schrittTlReg.style.display = 'block';
+                    if (schrittBlReg) schrittBlReg.style.display = 'none';
+                    if (schrittMaReg) schrittMaReg.style.display = 'none';
                     return;
                 }
 
                 if (lizenz.rolle === 'Bezirksleitung') {
-                    if (schrittCode) schrittCode.style.display = 'none';
                     if (schrittBlReg) schrittBlReg.style.display = 'block';
+                    if (schrittTlReg) schrittTlReg.style.display = 'none';
+                    if (schrittMaReg) schrittMaReg.style.display = 'none';
+                    return;
+                }
+
+                if (lizenz.rolle === 'Mitarbeiter') {
+                    if (schrittMaReg) schrittMaReg.style.display = 'block';
+                    if (schrittTlReg) schrittTlReg.style.display = 'none';
+                    if (schrittBlReg) schrittBlReg.style.display = 'none';
                     return;
                 }
 
@@ -252,6 +269,65 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Mitarbeiter Registrierung
+    if (btnMaRegistrieren) {
+        btnMaRegistrieren.addEventListener('click', async () => {
+            const name = document.getElementById('ma-reg-name').value.trim();
+            const personalnummer = document.getElementById('ma-reg-persnr').value.trim();
+            const pin = document.getElementById('ma-reg-pin').value.trim();
+
+            if (!name || !personalnummer || !pin) {
+                alert('Bitte fülle alle Felder aus.');
+                return;
+            }
+
+            if (personalnummer.length !== 6) {
+                alert('Die Personalnummer muss genau 6-stellig sein.');
+                return;
+            }
+
+            if (pin.length !== 4) {
+                alert('Der Kassen-PIN muss genau 4-stellig sein.');
+                return;
+            }
+
+            try {
+                if (temporaererLizenzSpeicher) {
+                    await window.supabaseVerbindung.client
+                        .from('lizenz_schluessel')
+                        .insert([{
+                            schluessel_code: temporaererLizenzSpeicher.schluessel_code,
+                            bezeichnung: name,
+                            rolle: 'Mitarbeiter',
+                            filiale_id: temporaererLizenzSpeicher.filiale_id,
+                            ist_einmalig: true,
+                            benutzt: true,
+                            thema: 'kik'
+                        }]);
+                }
+
+                const lizenzInfo = {
+                    id: temporaererLizenzSpeicher ? temporaererLizenzSpeicher.id : '',
+                    name: name,
+                    rolle: 'Mitarbeiter',
+                    filiale_id: temporaererLizenzSpeicher ? temporaererLizenzSpeicher.filiale_id : '',
+                    personalnummer: personalnummer,
+                    pin: pin,
+                    schluessel: temporaererLizenzSpeicher ? temporaererLizenzSpeicher.schluessel_code : '',
+                    thema: 'kik'
+                };
+
+                localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
+                alert(`Mitarbeiter-Profil "${name}" erfolgreich eingerichtet!`);
+                initialisiereAppSession(lizenzInfo);
+
+            } catch (err) {
+                console.error('Fehler bei der Mitarbeiter-Registrierung:', err.message);
+                alert('Fehler: ' + err.message);
+            }
+        });
+    }
+
     function initialisiereAppSession(lizenz) {
         window.aktuellerBenutzer = lizenz;
         window.aktiveSimulierteRolle = lizenz.rolle;
@@ -265,7 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ansichtAktivierung.classList.add('ausblenden');
         }
 
-        // Thema des Benutzers anwenden
         const aktuellesThema = lizenz.thema || 'kik';
         wendeThemaAn(aktuellesThema);
         if (auswahlFarbThema) auswahlFarbThema.value = aktuellesThema;
@@ -282,7 +357,6 @@ document.addEventListener('DOMContentLoaded', () => {
             viewSwitcher.style.display = 'inline-block';
             viewSwitcher.value = 'Master-Admin';
 
-            // Event-Listener nur einmalig binden
             if (!viewSwitcher.dataset.bound) {
                 viewSwitcher.dataset.bound = 'true';
                 viewSwitcher.addEventListener('change', (e) => {
@@ -294,7 +368,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Event-Listener für das Ändern des Farbschemas im Profil
     if (auswahlFarbThema) {
         auswahlFarbThema.addEventListener('change', async (e) => {
             const neuesThema = e.target.value;
@@ -320,7 +393,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // AUTOMATISCH GESICHERTE TEAMLEITER-DASHBOARD LADEFUNKTION MIT SELBSTHEILUNG
     async function teamleiterDashboardLaden(filialId) {
         const keyAnzeige = document.getElementById('tl-mitarbeiter-key-anzeige');
         const kopierBtn = document.getElementById('schaltflaeche-tl-key-kopieren');
@@ -340,11 +412,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const sauberFilialId = filialId.toString().trim();
-
-            // Alle Schlüssel aus Supabase abrufen
             const schluessel = await window.supabaseVerbindung.datenAbrufen('lizenz_schluessel');
             
-            // Suche nach einem passenden Mitarbeiter-Key für diese Filiale
             let maKey = schluessel.find(k => 
                 k.filiale_id && 
                 k.filiale_id.toString().trim().toLowerCase() === sauberFilialId.toLowerCase() && 
@@ -352,10 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 !k.ist_einmalig
             );
 
-            // SELBSTHEILUNG: Falls durch Löschungen/Tests kein Key da ist, automatisch einen neuen generieren und speichern!
             if (!maKey) {
-                console.warn(`Kein Mitarbeiter-Key für Filiale ${sauberFilialId} gefunden. Erstelle automatisch einen neuen...`);
-                
                 const block = () => Math.floor(1000 + Math.random() * 9000);
                 const neuerKeyCode = `KIK-${block()}-${block()}-${block()}`;
 
@@ -501,7 +567,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // QR-Code Aushang Drucken / Anzeigen Funktion für Teamleiter
     const btnQrDrucken = document.getElementById('schaltflaeche-tl-qr-drucken');
     if (btnQrDrucken) {
         btnQrDrucken.addEventListener('click', () => {
@@ -545,7 +610,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const adminTabBtn = document.getElementById('nav-btn-admin');
         const tlTeamTabBtn = document.getElementById('nav-btn-tl-team');
 
-        // Sicherheitshalber alle Bereiche ausblenden
         if (scannerBereich) { scannerBereich.style.display = 'none'; scannerBereich.classList.add('ausblenden'); }
         if (adminZentrale) { adminZentrale.style.display = 'none'; adminZentrale.classList.add('ausblenden'); }
         if (blZentrale) { blZentrale.style.display = 'none'; blZentrale.classList.add('ausblenden'); }
@@ -554,7 +618,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (adminTabBtn) { adminTabBtn.style.display = 'none'; adminTabBtn.classList.add('ausblenden'); }
         if (tlTeamTabBtn) { tlTeamTabBtn.style.display = 'none'; tlTeamTabBtn.classList.add('ausblenden'); }
 
-        // Je nach aktiver/simulierter Rolle die passenden Container anzeigen
         const zielRolle = window.aktiveSimulierteRolle || rolle;
 
         if (zielRolle === 'Master-Admin') {

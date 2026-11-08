@@ -327,6 +327,29 @@
                     </button>
                 </div>
 
+                <!-- STEP 2C: Registrierung für Mitarbeiter -->
+                <div id="auth-schritt-ma-registrierung" class="auth-karte ausblenden">
+                    <h2>Mitarbeiter-Profil einrichten</h2>
+                    <p class="auth-hinweis">Mitarbeiter-Key erkannt. Bitte trage deine Daten ein.</p>
+                    
+                    <div class="formular-gruppe">
+                        <label for="ma-reg-name">Dein vollständiger Name</label>
+                        <input type="text" id="ma-reg-name" placeholder="z. B. Maria Müller">
+                    </div>
+                    <div class="formular-gruppe">
+                        <label for="ma-reg-persnr">Personalnummer (6-stellig)</label>
+                        <input type="text" id="ma-reg-persnr" placeholder="z. B. 123456" maxlength="6">
+                    </div>
+                    <div class="formular-gruppe">
+                        <label for="ma-reg-pin">Kassen-PIN (4-stellig)</label>
+                        <input type="password" id="ma-reg-pin" placeholder="z. B. 1234" maxlength="4">
+                    </div>
+
+                    <button id="schaltflaeche-ma-registrieren" class="schaltflaeche-gruen">
+                        💾 Registrieren & Starten
+                    </button>
+                </div>
+
             </div>
 
         </main>
