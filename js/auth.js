@@ -321,30 +321,46 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function teamleiterDashboardLaden(filialId) {
-        const keyAnzeige = document.getElementById('tl-mitarbeiter-key-anzeige');
-        const kopierBtn = document.getElementById('schaltflaeche-tl-key-kopieren');
-        if (!keyAnzeige) return;
+    const keyAnzeige = document.getElementById('tl-mitarbeiter-key-anzeige');
+    const kopierBtn = document.getElementById('schaltflaeche-tl-key-kopieren');
+    
+    if (!keyAnzeige) return;
+    keyAnzeige.textContent = 'Lade Code...';
 
-        try {
-            const schluessel = await window.supabaseVerbindung.datenAbrufen('lizenz_schluessel');
-            const maKey = schluessel.find(k => k.filiale_id === filialId && k.rolle === 'Mitarbeiter' && !k.ist_einmalig);
-
-            if (maKey) {
-                keyAnzeige.textContent = maKey.schluessel_code;
-                if (kopierBtn) {
-                    kopierBtn.onclick = () => {
-                        navigator.clipboard.writeText(maKey.schluessel_code);
-                        alert(`Mitarbeiter-Key kopiert:\n${maKey.schluessel_code}`);
-                    };
-                }
-            } else {
-                keyAnzeige.textContent = 'Kein Key gefunden';
-            }
-        } catch (err) {
-            console.error('Fehler beim Laden des Mitarbeiter-Keys:', err);
-            keyAnzeige.textContent = 'Fehler beim Laden';
-        }
+    if (!window.supabaseVerbindung || !window.supabaseVerbindung.client) {
+        keyAnzeige.textContent = 'Datenbank nicht verbunden';
+        return;
     }
+
+    try {
+        // Alle Schlüssel aus Supabase abrufen
+        const schluessel = await window.supabaseVerbindung.datenAbrufen('lizenz_schluessel');
+        
+        // Suche nach einem passenden Mitarbeiter-Key für diese Filiale (ignoriere Groß-/Kleinschreibung bei der Filial-ID)
+        const maKey = schluessel.find(k => 
+            k.filiale_id && 
+            k.filiale_id.toString().trim().toLowerCase() === filialId.toString().trim().toLowerCase() && 
+            k.rolle === 'Mitarbeiter' && 
+            !k.ist_einmalig
+        );
+
+        if (maKey) {
+            keyAnzeige.textContent = maKey.schluessel_code;
+            if (kopierBtn) {
+                kopierBtn.onclick = () => {
+                    navigator.clipboard.writeText(maKey.schluessel_code);
+                    alert(`Mitarbeiter-Key kopiert:\n${maKey.schluessel_code}`);
+                };
+            }
+        } else {
+            // Fallback: Wenn kein spezifischer Key gefunden wurde, suche nach einem allgemeinen Mitarbeiter-Key ohne Filialbindung oder erstelle einen
+            keyAnzeige.textContent = 'Kein Key für diese Filiale hinterlegt';
+        }
+    } catch (err) {
+        console.error('Fehler beim Laden des Mitarbeiter-Keys:', err);
+        keyAnzeige.textContent = 'Fehler beim Laden';
+    }
+}
 
     async function teamleiterMitarbeiterLaden(filialId) {
         const listeBehaelter = document.getElementById('behaelter-tl-mitarbeiter-liste');
