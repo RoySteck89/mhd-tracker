@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MINIMALISTISCHE ARTIKELLISTE & LIVE-SUCHE (Alphabetisch, mit Zähler & Aktionen)
+   MINIMALISTISCHE ARTIKELLISTE & LIVE-SUCHE (Alphabetisch, mit eigenen Modals)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -9,6 +9,84 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!suchEingabe || !ergebnisBehaelter) return;
 
     let alleArtikel = [];
+
+    // Eigenes, professionelles Bestätigungs-Modal (ersetzt hässliches confirm())
+    function zeigeEigenesBestätigungsModal(titel, nachricht, istGefahr, callback) {
+        const altesOverlay = document.getElementById('custom-modal-overlay');
+        if (altesOverlay) altesOverlay.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'custom-modal-overlay';
+        overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;';
+        
+        const buttonFarbe = istGefahr ? '#dc3545' : '#28a745';
+        const buttonText = istGefahr ? 'Ja, löschen' : 'Bestätigen';
+
+        overlay.innerHTML = `
+            <div style="background: #ffffff; width: 100%; max-width: 380px; padding: 24px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 14px;">
+                <div style="font-weight: 700; font-size: 1.15rem; color: #003366;">${titel}</div>
+                <div style="font-size: 0.95rem; color: #495057; line-height: 1.4;">${nachricht}</div>
+                <div style="display: flex; gap: 10px; margin-top: 6px;">
+                    <button id="custom-modal-abbrechen" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">Abbrechen</button>
+                    <button id="custom-modal-ok" style="flex: 1; padding: 12px; background: ${buttonFarbe}; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">${buttonText}</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        document.getElementById('custom-modal-ok').onclick = () => {
+            overlay.remove();
+            callback(true);
+        };
+
+        document.getElementById('custom-modal-abbrechen').onclick = () => {
+            overlay.remove();
+            callback(false);
+        };
+    }
+
+    // Eigenes Eingabe-Modal (für Bearbeiten)
+    function zeigeEigenesEingabeModal(titel, vorabText, callback) {
+        const altesOverlay = document.getElementById('custom-modal-overlay');
+        if (altesOverlay) altesOverlay.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'custom-modal-overlay';
+        overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;';
+        
+        overlay.innerHTML = `
+            <div style="background: #ffffff; width: 100%; max-width: 380px; padding: 24px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 14px;">
+                <div style="font-weight: 700; font-size: 1.15rem; color: #003366;">${titel}</div>
+                <input type="text" id="custom-modal-input" value="${vorabText}" style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 1rem; box-sizing: border-box; outline: none; background: #f8f9fa;">
+                <div style="display: flex; gap: 10px; margin-top: 6px;">
+                    <button id="custom-modal-abbrechen" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">Abbrechen</button>
+                    <button id="custom-modal-ok" style="flex: 1; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">Speichern</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const input = document.getElementById('custom-modal-input');
+        input.focus();
+        input.select();
+
+        document.getElementById('custom-modal-ok').onclick = () => {
+            const wert = input.value.trim();
+            overlay.remove();
+            callback(wert);
+        };
+
+        document.getElementById('custom-modal-abbrechen').onclick = () => {
+            overlay.remove();
+            callback(null);
+        };
+
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('custom-modal-ok').click();
+            }
+        };
+    }
 
     // Artikel aus der Supabase-Datenbank laden
     async function artikelLaden() {
@@ -21,7 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const daten = await window.supabaseVerbindung.datenAbrufen('artikel');
         
-        // AUTOMATISCH ALPHABETISCH SORTIEREN (A bis Z)
         alleArtikel = daten ? daten.sort((a, b) => 
             a.artikelname.localeCompare(b.artikelname, 'de', { sensitivity: 'base' })
         ) : [];
@@ -33,13 +110,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function listeAnzeigen(artikelListe, suchBegriff = '') {
         ergebnisBehaelter.innerHTML = '';
 
-        // Treffer-Zähler oben anzeigen
         const zählerDiv = document.createElement('div');
         zählerDiv.style.cssText = 'font-size: 0.8rem; color: #6C757D; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;';
         zählerDiv.textContent = `${artikelListe.length} Artikel gefunden`;
         ergebnisBehaelter.appendChild(zählerDiv);
 
-        // Prüfen, ob Artikel gefunden wurden
         if (artikelListe.length === 0) {
             ergebnisBehaelter.innerHTML += `
                 <div class="fallback-meldung" style="padding: 20px; text-align: center; background: #FFF3CD; border: 1px solid #FFEEBA; border-radius: 8px; color: #856404; margin-top: 8px;">
@@ -60,7 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Artikel als sortierte Liste anzeigen (ohne Barcode-Anzeige)
         artikelListe.forEach(artikel => {
             const element = document.createElement('div');
             element.className = 'artikel-name-eintrag';
@@ -76,55 +150,58 @@ document.addEventListener('DOMContentLoaded', () => {
             ergebnisBehaelter.appendChild(element);
         });
 
-        // Event-Listener für Bearbeiten
+        // Event-Listener für Bearbeiten (mit eigenem Eingabe-Modal)
         document.querySelectorAll('.btn-artikel-bearbeiten').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+            btn.addEventListener('click', (e) => {
                 const id = e.target.getAttribute('data-id');
                 const alterName = e.target.getAttribute('data-name');
                 
-                const neuerName = prompt('Artikelbezeichnung bearbeiten:', alterName);
-                if (neuerName && neuerName.trim() !== '' && neuerName !== alterName) {
+                zeigeEigenesEingabeModal("Artikel bearbeiten", alterName, async (neuerName) => {
+                    if (!neuerName || neuerName === alterName) return;
                     try {
                         const { error } = await window.supabaseVerbindung.client
                             .from('artikel')
-                            .update({ artikelname: neuerName.trim() })
+                            .update({ artikelname: neuerName })
                             .eq('id', id);
 
                         if (error) throw error;
-                        alert('Artikel erfolgreich aktualisiert!');
                         artikelLaden();
                     } catch (err) {
                         alert('Fehler beim Aktualisieren: ' + err.message);
                     }
-                }
+                });
             });
         });
 
-        // Event-Listener für Löschen
+        // Event-Listener für Löschen (mit eigenem Sicherheits-Modal)
         document.querySelectorAll('.btn-artikel-loeschen').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+            btn.addEventListener('click', (e) => {
                 const id = e.target.getAttribute('data-id');
                 const artikelName = e.target.getAttribute('data-name');
                 
-                if (confirm(`Soll der Artikel "${artikelName}" wirklich unwiderruflich aus der Datenbank gelöscht werden?`)) {
-                    try {
-                        const { error } = await window.supabaseVerbindung.client
-                            .from('artikel')
-                            .delete()
-                            .eq('id', id);
+                zeigeEigenesBestätigungsModal(
+                    "Artikel löschen",
+                    `Soll der Artikel <strong>"${artikelName}"</strong> wirklich unwiderruflich aus der Datenbank gelöscht werden?`,
+                    true, // true = Roter Gefahren-Button
+                    async (bestätigt) => {
+                        if (!bestätigt) return;
+                        try {
+                            const { error } = await window.supabaseVerbindung.client
+                                .from('artikel')
+                                .delete()
+                                .eq('id', id);
 
-                        if (error) throw error;
-                        alert(`Artikel "${artikelName}" wurde gelöscht.`);
-                        artikelLaden();
-                    } catch (err) {
-                        alert('Fehler beim Löschen: ' + err.message);
+                            if (error) throw error;
+                            artikelLaden();
+                        } catch (err) {
+                            alert('Fehler beim Löschen (möglicherweise noch verknüpfte Einträge vorhanden): ' + err.message);
+                        }
                     }
-                }
+                );
             });
         });
     }
 
-    // Live-Suche (filtert und behält die alphabetische Ordnung bei)
     suchEingabe.addEventListener('input', (e) => {
         const eingabeWert = e.target.value.trim().toLowerCase();
 
@@ -146,5 +223,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     artikelLaden();
-    console.log('Artikel-Suche (Alphabetisch, ohne Barcode) erfolgreich initialisiert.');
+    console.log('Artikel-Suche (Alphabetisch, mit eigenen Modals) erfolgreich initialisiert.');
 });
