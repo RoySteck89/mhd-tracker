@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
             videoElement.srcObject = mediaStream;
 
             const barcodeDetector = new BarcodeDetector({
-                formats: ['ean_13', 'ean_8', 'code_128', 'upc_a', 'qr_code']
+                formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'itf', 'upc_a', 'upc_e', 'qr_code']
             });
 
             scanIntervall = setInterval(async () => {
@@ -81,6 +81,49 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (overlay) overlay.remove();
         }
+    }
+
+    // Professionelles, eigenes Modal statt des unschönen Browser-Prompts
+    function zeigeEigenenPrompt(titel, nachricht, callback) {
+        const altesOverlay = document.getElementById('custom-modal-overlay');
+        if (altesOverlay) altesOverlay.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'custom-modal-overlay';
+        overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;';
+        
+        overlay.innerHTML = `
+            <div style="background: #ffffff; width: 100%; max-width: 380px; padding: 24px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 14px;">
+                <div style="font-weight: 700; font-size: 1.15rem; color: #003366;">${titel}</div>
+                <div style="font-size: 0.95rem; color: #495057; line-height: 1.4;">${nachricht}</div>
+                <input type="text" id="custom-modal-input" placeholder="Artikelbezeichnung eingeben..." style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 1rem; box-sizing: border-box; outline: none; background: #f8f9fa;">
+                <div style="display: flex; gap: 10px; margin-top: 6px;">
+                    <button id="custom-modal-abbrechen" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">Abbrechen</button>
+                    <button id="custom-modal-ok" style="flex: 1; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">Speichern</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const input = document.getElementById('custom-modal-input');
+        input.focus();
+
+        document.getElementById('custom-modal-ok').onclick = () => {
+            const wert = input.value.trim();
+            overlay.remove();
+            callback(wert);
+        };
+
+        document.getElementById('custom-modal-abbrechen').onclick = () => {
+            overlay.remove();
+            callback(null);
+        };
+
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('custom-modal-ok').click();
+            }
+        };
     }
 
     // MHD-Eintrag speichern
@@ -119,19 +162,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (vorhandeneArtikel && vorhandeneArtikel.length > 0) {
                 artikelId = vorhandeneArtikel[0].id;
+                awaiteintragInSupabaseSpeichern(artikelId, barcode, mhdDatum);
             } else {
-                const artikelName = prompt(`Barcode "${barcode}" ist neu. Bitte Artikelbezeichnung eingeben:`, `Artikel ${barcode}`);
-                if (!artikelName) return;
+                // Eigenes professionelles Modal aufrufen (Feld ist komplett leer)
+                zeigeEigenenPrompt(
+                    "Neuer Artikel erkannt",
+                    `Der Barcode <code style="font-family: monospace; background: #e9ecef; padding: 2px 4px; border-radius: 4px;">${barcode}</code> ist neu im System. Bitte gib eine Artikelbezeichnung ein:`,
+                    async (artikelName) => {
+                        if (!artikelName) return;
 
-                const { data: neuerArtikel, error: insertFehler } = await window.supabaseVerbindung.client
-                    .from('artikel')
-                    .insert([{ barcode: barcode, artikelname: artikelName }])
-                    .select();
+                        const { data: neuerArtikel, error: insertFehler } = await window.supabaseVerbindung.client
+                            .from('artikel')
+                            .insert([{ barcode: barcode, artikelname: artikelName }])
+                            .select();
 
-                if (insertFehler) throw insertFehler;
-                artikelId = neuerArtikel[0].id;
+                        if (insertFehler) throw insertFehler;
+                        artikelId = neuerArtikel[0].id;
+                        awaiteintragInSupabaseSpeichern(artikelId, barcode, mhdDatum);
+                    }
+                );
             }
+        } catch (err) {
+            console.error('Fehler beim Prüfen des Artikels:', err.message);
+            alert('Fehler beim Prüfen des Artikels: ' + err.message);
+        }
+    }
 
+    async function awaiteintragInSupabaseSpeichern(artikelId, barcode, mhdDatum) {
+        try {
             const lizenz = JSON.parse(localStorage.getItem('kik_app_lizenz')) || {};
             const filialeId = lizenz.filiale_id || 'Zentrale';
 
@@ -157,11 +215,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Aktive Filial-Artikel laden & direkt im Dashboard bearbeiten/reduzieren
+    // Aktive Filial-Artikel laden (Genau 1 Monat Vorlauf & deutsches Datumsformat)
     async function aktiveFilialArtikelLaden() {
         if (!aktiveArtikelBehaelter || !window.supabaseVerbindung) return;
 
-        aktiveArtikelBehaelter.innerHTML = '<div style="padding: 12px; text-align: center; color: #6C757D;">Lade aktive Filial-Artikel...</div>';
+        aktiveArtikelBehaelter.innerHTML = '<div style="padding: 12px; text-align: center; color: #6C757D;">Lade anstehende Filial-Artikel...</div>';
 
         try {
             const { data: eintraege, error } = await window.supabaseVerbindung.client
@@ -172,14 +230,41 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
 
             if (!eintraege || eintraege.length === 0) {
-                aktiveArtikelBehaelter.innerHTML = '<div class="liste-karte" style="justify-content: center; color: #6C757D;">Keine aktiven MHD-Artikel in dieser Filiale.</div>';
+                aktiveArtikelBehaelter.innerHTML = '<div class="liste-karte" style="justify-content: center; color: #6C757D;">Keine Artikel im Reduzierungs-Zeitraum.</div>';
+                return;
+            }
+
+            const heute = new Date();
+            heute.setHours(0, 0, 0, 0);
+
+            const relevanteEintraege = eintraege.filter(item => {
+                if (!item.mhd_datum) return false;
+                const mhdDatum = new Date(item.mhd_datum);
+                
+                const vorlaufDatum = new Date(mhdDatum);
+                vorlaufDatum.setMonth(vorlaufDatum.getMonth() - 1);
+                vorlaufDatum.setHours(0, 0, 0, 0);
+
+                return heute >= vorlaufDatum;
+            });
+
+            if (relevanteEintraege.length === 0) {
+                aktiveArtikelBehaelter.innerHTML = '<div class="liste-karte" style="justify-content: center; color: #6C757D;">Keine Artikel im Reduzierungs-Zeitraum (1 Monat Vorlauf).</div>';
                 return;
             }
 
             aktiveArtikelBehaelter.innerHTML = '';
-            eintraege.forEach(item => {
+            relevanteEintraege.forEach(item => {
                 const artikelName = item.artikel ? item.artikel.artikelname : `Barcode: ${item.barcode}`;
                 
+                let deutschesDatum = item.mhd_datum;
+                if (item.mhd_datum && item.mhd_datum.includes('-')) {
+                    const teile = item.mhd_datum.split('-');
+                    if (teile.length === 3) {
+                        deutschesDatum = `${teile[2]}.${teile[1]}.${teile[0]}`;
+                    }
+                }
+
                 const element = document.createElement('div');
                 element.className = 'liste-karte';
                 element.style.flexDirection = 'column';
@@ -189,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 element.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div class="liste-karte-titel">${artikelName}</div>
-                        <span class="badge-status badge-aktiv">MHD: ${item.mhd_datum}</span>
+                        <span class="badge-status badge-aktiv" style="background: #FFF3CD; color: #856404;">MHD: ${deutschesDatum}</span>
                     </div>
                     <div style="display: flex; gap: 6px; margin-top: 4px;">
                         <button class="btn-aktions-bearbeiten btn-status-setzen" data-id="${item.id}" data-status="reduziert" style="flex: 1; background: #FFF3CD; color: #856404;">🏷️ Reduzieren</button>
@@ -200,7 +285,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 aktiveArtikelBehaelter.appendChild(element);
             });
 
-            // Status-Änderungs-Listener
             document.querySelectorAll('.btn-status-setzen').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const id = e.target.getAttribute('data-id');
@@ -225,7 +309,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Beim Start laden
     aktiveFilialArtikelLaden();
     console.log('Scanner- & Mitarbeiter-Dashboard-Logik erfolgreich geladen.');
 });

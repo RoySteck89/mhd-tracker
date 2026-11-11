@@ -499,10 +499,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const schluessel = await window.supabaseVerbindung.datenAbrufen('lizenz_schluessel');
             const saubereFilialId = filialId.toString().trim().toLowerCase();
 
-            // Korrigierter, robuster Filter ohne Syntaxfehler
+            // WICHTIG: Nur echte, eingelöste Mitarbeiter-Keys (ist_einmalig === true) anzeigen, 
+            // damit der allgemeine Filial-Vorlagenkey ausgeblendet bleibt!
             const eingelösteKeys = schluessel.filter(k => {
                 const kFiliale = k.filiale_id ? k.filiale_id.toString().trim().toLowerCase() : '';
-                return kFiliale === saubereFilialId && k.rolle === 'Mitarbeiter';
+                return kFiliale === saubereFilialId && k.rolle === 'Mitarbeiter' && k.ist_einmalig === true;
             });
 
             if (eingelösteKeys.length === 0) {
