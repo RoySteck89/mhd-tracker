@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SCANNER-, SPEICHER- & FILIAL-ARTIKEL-LOGIK (SAUBER GETRENNT VON CSS)
+   SCANNER-, SPEICHER- & FILIAL-ARTIKEL-LOGIK (INKL. DUPLIKATS-PRÜFUNG)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -162,9 +162,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (vorhandeneArtikel && vorhandeneArtikel.length > 0) {
                 artikelId = vorhandeneArtikel[0].id;
-                awaiteintragInSupabaseSpeichern(artikelId, barcode, mhdDatum);
+                await eintragInSupabaseSpeichern(artikelId, barcode, mhdDatum);
             } else {
-                // Eigenes professionelles Modal aufrufen (Feld ist komplett leer)
                 zeigeEigenenPrompt(
                     "Neuer Artikel erkannt",
                     `Der Barcode <code style="font-family: monospace; background: #e9ecef; padding: 2px 4px; border-radius: 4px;">${barcode}</code> ist neu im System. Bitte gib eine Artikelbezeichnung ein:`,
@@ -178,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         if (insertFehler) throw insertFehler;
                         artikelId = neuerArtikel[0].id;
-                        awaiteintragInSupabaseSpeichern(artikelId, barcode, mhdDatum);
+                        await eintragInSupabaseSpeichern(artikelId, barcode, mhdDatum);
                     }
                 );
             }
@@ -188,10 +187,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function awaiteintragInSupabaseSpeichern(artikelId, barcode, mhdDatum) {
+    async function eintragInSupabaseSpeichern(artikelId, barcode, mhdDatum) {
         try {
             const lizenz = JSON.parse(localStorage.getItem('kik_app_lizenz')) || {};
             const filialeId = lizenz.filiale_id || 'Zentrale';
+
+            // Prüfung auf exaktes Duplikat (gleicher Barcode + gleiches MHD in derselben Filiale)
+            const { data: doppelteEintraege, error: pruefFehler } = await window.supabaseVerbindung.client
+                .from('mhd_eintraege')
+                .select('*')
+                .eq('barcode', barcode)
+                .eq('mhd_datum', mhdDatum)
+                .eq('filiale_id', filialeId)
+                .eq('status', 'aktiv');
+
+            if (!pruefFehler && doppelteEintraege && doppelteEintraege.length > 0) {
+                let deutschesDatum = mhdDatum;
+                if (mhdDatum && mhdDatum.includes('-')) {
+                    const teile = mhdDatum.split('-');
+                    if (teile.length === 3) {
+                        deutschesDatum = `${teile[2]}.${teile[1]}.${teile[0]}`;
+                    }
+                }
+                alert(`Artikel mit MHD ${deutschesDatum} ist bereits eingetragen.`);
+                return; // Speichern abbrechen
+            }
 
             const { error: mhdFehler } = await window.supabaseVerbindung.client
                 .from('mhd_eintraege')

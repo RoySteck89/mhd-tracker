@@ -1,14 +1,19 @@
 /* ==========================================================================
-   LIZENZ- & AKTIVIERUNGSLOGIK (FINAL BEHOBEN GEGEN WEISSEN BILDSCHIRM)
+   LIZENZ- & AKTIVIERUNGSLOGIK (INKL. PIN-SCHNELLLOGIN FÜR ALLE GERÄTE)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
     const ansichtAktivierung = document.getElementById('ansicht-aktivierung');
+    const schrittLogin = document.getElementById('auth-schritt-login');
     const schrittCode = document.getElementById('auth-schritt-code');
     const schrittTlReg = document.getElementById('auth-schritt-tl-registrierung');
     const schrittBlReg = document.getElementById('auth-schritt-bl-registrierung');
     const schrittMaReg = document.getElementById('auth-schritt-ma-registrierung');
     
+    const btnLoginAbsenden = document.getElementById('schaltflaeche-login-absenden');
+    const btnZuAktivierung = document.getElementById('schaltflaeche-zu-aktivierung');
+    const btnZuLogin = document.getElementById('schaltflaeche-zu-login');
+
     const btnAktivieren = document.getElementById('schaltflaeche-aktivieren');
     const eingabeSchluessel = document.getElementById('eingabe-aktivierungsschluessel');
     
@@ -51,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         // Alle Schritte verstecken
-        [schrittCode, schrittTlReg, schrittBlReg, schrittMaReg].forEach(el => {
+        [schrittLogin, schrittCode, schrittTlReg, schrittBlReg, schrittMaReg].forEach(el => {
             if (el) {
                 el.style.display = 'none';
                 el.classList.add('ausblenden');
@@ -66,8 +71,73 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function zeigeAktivierung() {
-        zeigeAuthSchritt(schrittCode);
-        if (benutzerAnzeige) benutzerAnzeige.textContent = 'Nicht aktiviert';
+        // Standardmäßig beim Ausloggen oder neuen Gerät immer den Schnell-Login anzeigen!
+        zeigeAuthSchritt(schrittLogin);
+        if (benutzerAnzeige) benutzerAnzeige.textContent = 'Nicht angemeldet';
+    }
+
+    // Umschalt-Buttons für den Login-Bereich
+    if (btnZuAktivierung) {
+        btnZuAktivierung.addEventListener('click', () => zeigeAuthSchritt(schrittCode));
+    }
+    if (btnZuLogin) {
+        btnZuLogin.addEventListener('click', () => zeigeAuthSchritt(schrittLogin));
+    }
+
+    // SCHNELL-LOGIN PER PERSONALNUMMER & PIN
+    if (btnLoginAbsenden) {
+        btnLoginAbsenden.addEventListener('click', async () => {
+            const persnrInput = document.getElementById('login-persnr');
+            const pinInput = document.getElementById('login-pin');
+
+            const personalnummer = persnrInput ? persnrInput.value.trim() : '';
+            const pin = pinInput ? pinInput.value.trim() : '';
+
+            if (!personalnummer || !pin) {
+                alert('Bitte Personalnummer und PIN eingeben.');
+                return;
+            }
+
+            try {
+                if (!window.supabaseVerbindung || !window.supabaseVerbindung.client) {
+                    alert('Datenbankverbindung nicht bereit.');
+                    return;
+                }
+
+                // In der Datenbank nach Personalnummer und PIN suchen
+                const { data, error } = await window.supabaseVerbindung.client
+                    .from('lizenz_schluessel')
+                    .select('*')
+                    .eq('personalnummer', personalnummer)
+                    .eq('pin', pin);
+
+                if (error || !data || data.length === 0) {
+                    alert('Ungültige Personalnummer oder falscher PIN!');
+                    return;
+                }
+
+                const lizenz = data[0];
+
+                const lizenzInfo = {
+                    id: lizenz.id,
+                    name: lizenz.bezeichnung || 'Benutzer',
+                    rolle: lizenz.rolle,
+                    filiale_id: lizenz.filiale_id || '',
+                    personalnummer: lizenz.personalnummer,
+                    pin: lizenz.pin,
+                    schluessel: lizenz.schluessel_code,
+                    thema: lizenz.thema || 'kik'
+                };
+
+                localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
+                alert(`Erfolgreich angemeldet als: ${lizenzInfo.name} (${lizenzInfo.rolle})`);
+                initialisiereAppSession(lizenzInfo);
+
+            } catch (err) {
+                console.error('Login-Fehler:', err);
+                alert('Fehler bei der Anmeldung: ' + err.message);
+            }
+        });
     }
 
     function pruefeAktivierung() {
@@ -124,7 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 temporaererLizenzSpeicher = lizenz;
 
-                // Gezielte Weiterleitung je nach Rolle zur jeweiligen Registrierungskarte
                 if (lizenz.rolle === 'Teamleitung') {
                     zeigeAuthSchritt(schrittTlReg);
                     return;
@@ -210,7 +279,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         .update({ 
                             benutzt: true, 
                             filiale_id: filialEingabe,
-                            bezeichnung: name 
+                            bezeichnung: name,
+                            personalnummer: personalnummer,
+                            pin: pin
                         })
                         .eq('id', temporaererLizenzSpeicher.id);
                 }
@@ -257,7 +328,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (temporaererLizenzSpeicher && temporaererLizenzSpeicher.id) {
                     await window.supabaseVerbindung.client
                         .from('lizenz_schluessel')
-                        .update({ benutzt: true, bezeichnung: name })
+                        .update({ 
+                            benutzt: true, 
+                            bezeichnung: name,
+                            personalnummer: personalnummer,
+                            pin: pin
+                        })
                         .eq('id', temporaererLizenzSpeicher.id);
                 }
 
@@ -308,8 +384,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
+                if (!window.supabaseVerbindung || !window.supabaseVerbindung.client) {
+                    alert('Datenbankverbindung nicht bereit.');
+                    return;
+                }
+
                 if (temporaererLizenzSpeicher) {
-                    await window.supabaseVerbindung.client
+                    const { error } = await window.supabaseVerbindung.client
                         .from('lizenz_schluessel')
                         .insert([{
                             schluessel_code: temporaererLizenzSpeicher.schluessel_code,
@@ -318,8 +399,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             filiale_id: temporaererLizenzSpeicher.filiale_id,
                             ist_einmalig: true,
                             benutzt: true,
+                            personalnummer: personalnummer,
+                            pin: pin,
                             thema: 'kik'
                         }]);
+
+                    if (error) throw error;
                 }
 
                 const lizenzInfo = {
@@ -352,13 +437,11 @@ document.addEventListener('DOMContentLoaded', () => {
             benutzerAnzeige.innerHTML = `👑 <strong>${lizenz.name}</strong> (${lizenz.rolle})`;
         }
 
-        // Aktivierungs-Overlay komplett ausblenden
         if (ansichtAktivierung) {
             ansichtAktivierung.style.display = 'none';
             ansichtAktivierung.classList.add('ausblenden');
         }
 
-        // Startansicht erzwingen
         const startAnsicht = document.getElementById('ansicht-startseite');
         if (startAnsicht) {
             startAnsicht.classList.remove('ausblenden');
@@ -499,8 +582,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const schluessel = await window.supabaseVerbindung.datenAbrufen('lizenz_schluessel');
             const saubereFilialId = filialId.toString().trim().toLowerCase();
 
-            // WICHTIG: Nur echte, eingelöste Mitarbeiter-Keys (ist_einmalig === true) anzeigen, 
-            // damit der allgemeine Filial-Vorlagenkey ausgeblendet bleibt!
             const eingelösteKeys = schluessel.filter(k => {
                 const kFiliale = k.filiale_id ? k.filiale_id.toString().trim().toLowerCase() : '';
                 return kFiliale === saubereFilialId && k.rolle === 'Mitarbeiter' && k.ist_einmalig === true;
@@ -513,15 +594,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             listeBehaelter.innerHTML = '';
             eingelösteKeys.forEach(item => {
+                const saubererName = (item.bezeichnung || 'Mitarbeiter').replace(/\s*\([^)]*\)/g, '').trim();
+
                 const el = document.createElement('div');
                 el.className = 'liste-karte';
                 el.innerHTML = `
                     <div>
-                        <div class="liste-karte-titel">${item.bezeichnung || 'Mitarbeiter'}</div>
-                        <div class="liste-karte-untertitel" style="font-family: monospace;">Key: ${item.schluessel_code}</div>
+                        <div class="liste-karte-titel">${saubererName}</div>
+                        <div class="liste-karte-untertitel" style="font-size: 0.8rem; color: #6C757D;">Personalnummer: ${item.personalnummer || '---'}</div>
                     </div>
                     <div style="display: flex; gap: 6px;">
-                        <button class="btn-aktions-bearbeiten btn-ma-bearbeiten" data-id="${item.id}" data-name="${item.bezeichnung || ''}">✏️ Bearbeiten</button>
+                        <button class="btn-aktions-bearbeiten btn-ma-bearbeiten" data-id="${item.id}" data-name="${saubererName}">✏️ Bearbeiten</button>
                         <button class="btn-aktions-loeschen btn-ma-loeschen" data-id="${item.id}">🗑️ Löschen</button>
                     </div>
                 `;
@@ -566,6 +649,23 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Fehler beim Laden der Mitarbeiter:', err);
             listeBehaelter.innerHTML = '<div style="color: #DC3545; text-align: center;">Fehler beim Laden der Mitarbeiter.</div>';
         }
+    }
+
+    const tlTeamTabBtn = document.getElementById('nav-btn-tl-team');
+    if (tlTeamTabBtn) {
+        tlTeamTabBtn.addEventListener('click', () => {
+            const gespeicherteLizenz = localStorage.getItem('kik_app_lizenz');
+            if (gespeicherteLizenz) {
+                try {
+                    const lizenz = JSON.parse(gespeicherteLizenz);
+                    if (lizenz.rolle === 'Teamleitung' && lizenz.filiale_id) {
+                        teamleiterMitarbeiterLaden(lizenz.filiale_id);
+                    }
+                } catch (e) {
+                    console.error('Fehler beim Laden der Team-Ansicht:', e);
+                }
+            }
+        });
     }
 
     if (btnMaSpeichern) {
@@ -653,9 +753,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tlZentrale) { tlZentrale.style.display = 'none'; tlZentrale.classList.add('ausblenden'); }
 
         if (adminTabBtn) { adminTabBtn.style.display = 'none'; adminTabBtn.classList.add('ausblenden'); }
-        if (tlTeamTabBtn) { tlTeamTabBtn.style.display = 'none'; tlTeamTabBtn.classList.add('ausblenden'); }
+        if (tlTeamTabBtn) { tlTeamTabBtn.style.display = 'none'; tlTeamTabBtn.classList._add?.('ausblenden') || tlTeamTabBtn.classList.add('ausblenden'); }
 
-        const zielRolle = window.aktiveSimulierteRolle || rolle;
+        const zielRolle = window.aktiveSimulierteRolle ||rolle;
 
         if (zielRolle === 'Master-Admin') {
             if (adminZentrale) { adminZentrale.style.display = 'block'; adminZentrale.classList.remove('ausblenden'); }

@@ -264,16 +264,42 @@
             <!-- AKTIVIERUNGS- / LOGIN-ANSICHT -->
             <div id="ansicht-aktivierung" class="app-ansicht auth-ansicht ausblenden">
                 
-                <!-- STEP 1: Code-Eingabe (Erststart) -->
-                <div id="auth-schritt-code" class="auth-karte">
-                    <h2>App-Aktivierung</h2>
-                    <p class="auth-hinweis">Bitte gib deinen Aktivierungsschlüssel ein, um die App freizuschalten.</p>
+                <!-- STANDARD-LOGIN PER PERSONALNUMMER & PIN (Schnell-Login) -->
+                <div id="auth-schritt-login" class="auth-karte">
+                    <h2>MHD-Scanner Anmeldung</h2>
+                    <p class="auth-hinweis">Gib deine Personalnummer und deinen Kassen-PIN ein, um dich auf diesem Gerät anzumelden.</p>
+                    
+                    <div class="formular-gruppe">
+                        <label for="login-persnr">Personalnummer (6-stellig)</label>
+                        <input type="text" id="login-persnr" placeholder="z. B. 123456" maxlength="6" autocomplete="off">
+                    </div>
+                    <div class="formular-gruppe">
+                        <label for="login-pin">Kassen-PIN (4-stellig)</label>
+                        <input type="password" id="login-pin" placeholder="z. B. 1234" maxlength="4">
+                    </div>
+
+                    <button type="button" id="schaltflaeche-login-absenden" class="schaltflaeche-primaer" style="margin-bottom: 12px;">
+                        🔓 Anmelden
+                    </button>
+
+                    <button type="button" id="schaltflaeche-zu-aktivierung" style="background: transparent; border: none; color: #003366; text-decoration: underline; cursor: pointer; font-size: 0.85rem; width: 100%; padding: 6px;">
+                        ⚙️ Erstinbetriebnahme: Gerät mit Aktivierungsschlüssel einrichten
+                    </button>
+                </div>
+
+                <!-- STEP 1: Code-Eingabe (Nur für die allererste Einrichtung auf einem neuen Gerät) -->
+                <div id="auth-schritt-code" class="auth-karte ausblenden">
+                    <h2>Gerät einrichten</h2>
+                    <p class="auth-hinweis">Bitte gib den Aktivierungsschlüssel der Filiale ein, um dieses Gerät zu registrieren.</p>
                     <div class="formular-gruppe">
                         <label for="eingabe-aktivierungsschluessel">Aktivierungsschlüssel</label>
                         <input type="text" id="eingabe-aktivierungsschluessel" placeholder="z. B. KIK-1234-5678-9012" autocomplete="off">
                     </div>
-                    <button type="button" id="schaltflaeche-aktivieren" class="schaltflaeche-primaer">
+                    <button type="button" id="schaltflaeche-aktivieren" class="schaltflaeche-primaer" style="margin-bottom: 12px;">
                         🔑 Schlüssel Prüfen
+                    </button>
+                    <button type="button" id="schaltflaeche-zu-login" style="background: transparent; border: none; color: #003366; text-decoration: underline; cursor: pointer; font-size: 0.85rem; width: 100%; padding: 6px;">
+                        ⬅️ Zurück zum Schnell-Login
                     </button>
                 </div>
 
