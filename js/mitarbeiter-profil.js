@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MITARBEITER-PROFIL & MONATS-STATISTIKEN (REINER NAME OHNE KLAMMERN)
+   MITARBEITER-PROFIL & MONATS-STATISTIKEN (INKL. PIN-SCHNELL-LOGIN ABMELDUNG)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // 3. HTML-Struktur rendern (Name ohne Klammerzusatz)
+        // 3. HTML-Struktur rendern
         profilBehaelter.innerHTML = `
             <!-- Kopfkarte -->
             <div class="profil-kopfkarte">
@@ -101,19 +101,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             </div>
 
-            <!-- Profil-Aktionen -->
+            <!-- Profil-Aktionen (Sauberer Schichtwechsel-Login) -->
             <div class="profil-aktionen">
-                <button id="schaltflaeche-app-abmelden" class="btn-profil-gefahr">
-                    🚪 App auf diesem Gerät abmelden & zurücksetzen
+                <button id="schaltflaeche-app-abmelden" class="btn-profil-gefahr" style="background: #DC3545; color: white;">
+                    🔒 Vom Gerät abmelden (Schichtwechsel)
                 </button>
             </div>
         `;
 
-        // Event-Listener für den Abmelden-Button
+        // Event-Listener für den Abmelden-Button (Beendet nur die Session, das Gerät bleibt aktiviert)
         const abmeldenBtn = document.getElementById('schaltflaeche-app-abmelden');
         if (abmeldenBtn) {
             abmeldenBtn.addEventListener('click', () => {
-                if (confirm('Möchtest du dich wirklich abmelden? Die App wird dadurch in den Werkszustand (Aktivierungsmaske) zurückgesetzt.')) {
+                if (confirm('Möchtest du dich von diesem Gerät abmelden? Der nächste Mitarbeiter kann sich direkt per Personalnummer & PIN anmelden.')) {
                     localStorage.removeItem('kik_app_lizenz');
                     location.reload();
                 }
