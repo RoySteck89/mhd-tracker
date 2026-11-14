@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LIZENZ- & AKTIVIERUNGSLOGIK (INKL. PIN-SCHNELLLOGIN FÜR ALLE GERÄTE)
+   LIZENZ- & AKTIVIERUNGSLOGIK (INKL. PIN-SCHNELLLOGIN & TAB-ERHALT)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -55,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ansichtAktivierung.style.display = 'flex';
         }
         
-        // Alle Schritte verstecken
         [schrittLogin, schrittCode, schrittTlReg, schrittBlReg, schrittMaReg].forEach(el => {
             if (el) {
                 el.style.display = 'none';
@@ -63,7 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Gewünschten Schritt einblenden
         if (schrittElement) {
             schrittElement.style.display = 'flex';
             schrittElement.classList.remove('ausblenden');
@@ -71,12 +69,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function zeigeAktivierung() {
-        // Standardmäßig beim Ausloggen oder neuen Gerät immer den Schnell-Login anzeigen!
         zeigeAuthSchritt(schrittLogin);
         if (benutzerAnzeige) benutzerAnzeige.textContent = 'Nicht angemeldet';
     }
 
-    // Umschalt-Buttons für den Login-Bereich
     if (btnZuAktivierung) {
         btnZuAktivierung.addEventListener('click', () => zeigeAuthSchritt(schrittCode));
     }
@@ -104,7 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // In der Datenbank nach Personalnummer und PIN suchen
                 const { data, error } = await window.supabaseVerbindung.client
                     .from('lizenz_schluessel')
                     .select('*')
@@ -130,6 +125,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
+                // Bei frischem Login immer auf Startseite
+                sessionStorage.removeItem('kik_aktive_ansicht');
+                
                 alert(`Erfolgreich angemeldet als: ${lizenzInfo.name} (${lizenzInfo.rolle})`);
                 initialisiereAppSession(lizenzInfo);
 
@@ -226,6 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
+                sessionStorage.removeItem('kik_aktive_ansicht');
                 alert(`App erfolgreich aktiviert als: ${lizenzInfo.rolle}`);
                 initialisiereAppSession(lizenzInfo);
 
@@ -299,6 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
+                sessionStorage.removeItem('kik_aktive_ansicht');
                 alert(`Filiale "${filialEingabe}" erfolgreich eingerichtet!`);
                 initialisiereAppSession(lizenzInfo);
 
@@ -348,6 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
+                sessionStorage.removeItem('kik_aktive_ansicht');
                 alert(`Bezirksleitung "${name}" erfolgreich eingerichtet!`);
                 initialisiereAppSession(lizenzInfo);
 
@@ -378,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (pin.length !== 4) {
+            if (pin.length !== 4)  {
                 alert('Der Kassen-PIN muss genau 4-stellig sein.');
                 return;
             }
@@ -419,6 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
+                sessionStorage.removeItem('kik_aktive_ansicht');
                 alert(`Mitarbeiter-Profil "${name}" erfolgreich eingerichtet!`);
                 initialisiereAppSession(lizenzInfo);
 
@@ -442,12 +444,32 @@ document.addEventListener('DOMContentLoaded', () => {
             ansichtAktivierung.classList.add('ausblenden');
         }
 
-        const startAnsicht = document.getElementById('ansicht-startseite');
-        if (startAnsicht) {
-            startAnsicht.classList.remove('ausblenden');
-            startAnsicht.classList.add('aktiv');
-            startAnsicht.style.display = 'flex';
-        }
+        // RESPEKTUIERE GEMERKTE ANSICHT ODER FALLBACK AUF STARTSEITE
+        const gemerkteAnsicht = sessionStorage.getItem('kik_aktive_ansicht') || 'ansicht-startseite';
+        const ansichten = document.querySelectorAll('.app-ansicht');
+        
+        ansichten.forEach(ansicht => {
+            if (ansicht.id === 'ansicht-aktivierung') return;
+            if (ansicht.id === gemerkteAnsicht) {
+                ansicht.classList.remove('ausblenden');
+                ansicht.classList.add('aktiv');
+                ansicht.style.display = 'flex';
+            } else {
+                ansicht.classList.remove('aktiv');
+                ansicht.classList.add('ausblenden');
+                ansicht.style.display = 'none';
+            }
+        });
+
+        // Passenden Navigations-Button als aktiv setzen
+        const navSchaltflaechen = document.querySelectorAll('.nav-schaltflaeche');
+        navSchaltflaechen.forEach(btn => {
+            if (btn.getAttribute('data-ziel') === gemerkteAnsicht) {
+                btn.classList.add('aktiv');
+            } else {
+                btn.classList.remove('aktiv');
+            }
+        });
 
         const aktuellesThema = lizenz.thema || 'kik';
         wendeThemaAn(aktuellesThema);
@@ -753,9 +775,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tlZentrale) { tlZentrale.style.display = 'none'; tlZentrale.classList.add('ausblenden'); }
 
         if (adminTabBtn) { adminTabBtn.style.display = 'none'; adminTabBtn.classList.add('ausblenden'); }
-        if (tlTeamTabBtn) { tlTeamTabBtn.style.display = 'none'; tlTeamTabBtn.classList._add?.('ausblenden') || tlTeamTabBtn.classList.add('ausblenden'); }
+        if (tlTeamTabBtn) { tlTeamTabBtn.style.display = 'none'; tlTeamTabBtn.classList.add('ausblenden'); }
 
-        const zielRolle = window.aktiveSimulierteRolle ||rolle;
+        const zielRolle = window.aktiveSimulierteRolle || rolle;
 
         if (zielRolle === 'Master-Admin') {
             if (adminZentrale) { adminZentrale.style.display = 'block'; adminZentrale.classList.remove('ausblenden'); }
