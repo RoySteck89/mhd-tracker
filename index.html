@@ -7,17 +7,15 @@
 
     <!-- PWA Manifest & Theme-Color -->
     <link rel="manifest" href="pwa/manifest.json">
-    <meta name="theme-color" content="#003366">
+    <meta name="theme-color" content="#0F766E">
 	
     <!-- Supabase JS Client CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <!-- Externe CSS-Dateien (Modular nach Kaskadierung) -->
-    <link rel="stylesheet" href="css/basis-layout.css">
-    <link rel="stylesheet" href="css/standard-design.css" id="theme-stylesheet">
-    <link rel="stylesheet" href="css/kik-thema.css">
+    <!-- Externe CSS-Datei (Modernes Türkis Design) -->
+	<link rel="stylesheet" href="css/designs.css">
 </head>
-<body data-theme="kik">
+<body>
 
     <!-- Haupt-Container der App -->
     <div id="app-container">
@@ -155,22 +153,9 @@
                 <div id="behälter-such-ergebnisse"></div>
             </section>
 
-            <!-- ANSICHT 3: Mitarbeiter-Motivations-Profil & Design-Auswahl -->
+            <!-- ANSICHT 3: Mitarbeiter-Motivations-Profil -->
             <section id="ansicht-profil" class="app-ansicht ausblenden">
                 <div id="behälter-mitarbeiter-statistik"></div>
-
-                <!-- Farbtheme-Auswahl -->
-                <div class="erfassungs-karte karten-hintergrund" style="margin-top: 16px;">
-                    <div class="karten-titel-fett">🎨 Persönliches Farbschema</div>
-                    <p class="karten-untertitel-text">Wähle dein bevorzugtes Design. Es wird automatisch für deinen Account gespeichert.</p>
-                    <div class="formular-gruppe">
-                        <select id="auswahl-farb-thema" class="form-control form-input-standard">
-                            <option value="kik">KiK-Klassik (Rot / Corporate)</option>
-                            <option value="standard">Standard (Blau / Gelb)</option>
-                            <option value="dark">Dunkelmodus (Dark Mode)</option>
-                        </select>
-                    </div>
-                </div>
             </section>
 
             <!-- ANSICHT 4: TEAMLEITER-MITARBEITER-VERWALTUNG -->
@@ -282,7 +267,7 @@
                         🔓 Anmelden
                     </button>
 
-                    <button type="button" id="schaltflaeche-zu-aktivierung" style="background: transparent; border: none; color: #003366; text-decoration: underline; cursor: pointer; font-size: 0.85rem; width: 100%; padding: 6px;">
+                    <button type="button" id="schaltflaeche-zu-aktivierung" style="background: transparent; border: none; cursor: pointer; font-size: 0.85rem; width: 100%; padding: 6px; color: #0D9488;">
                         ⚙️ Erstinbetriebnahme: Gerät mit Aktivierungsschlüssel einrichten
                     </button>
                 </div>
@@ -298,7 +283,7 @@
                     <button type="button" id="schaltflaeche-aktivieren" class="schaltflaeche-primaer" style="margin-bottom: 12px;">
                         🔑 Schlüssel Prüfen
                     </button>
-                    <button type="button" id="schaltflaeche-zu-login" style="background: transparent; border: none; color: #003366; text-decoration: underline; cursor: pointer; font-size: 0.85rem; width: 100%; padding: 6px;">
+                    <button type="button" id="schaltflaeche-zu-login" style="background: transparent; border: none; cursor: pointer; font-size: 0.85rem; width: 100%; padding: 6px; color: #0D9488;">
                         ⬅️ Zurück zum Schnell-Login
                     </button>
                 </div>

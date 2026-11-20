@@ -35,18 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let temporaererLizenzSpeicher = null;
 
     function wendeThemaAn(themaName) {
-        const themeStylesheet = document.getElementById('theme-stylesheet');
-        if (!themeStylesheet) return;
-
-        if (themaName === 'standard') {
-            themeStylesheet.href = 'css/standard-design.css';
-        } else if (themaName === 'dark') {
-            themeStylesheet.href = 'css/dark-design.css';
-        } else {
-            themeStylesheet.href = 'css/standard-design.css';
-        }
-        document.body.setAttribute('data-theme', themaName);
-    }
+    const gewaehltesTema = themaName || 'kik';
+    document.body.setAttribute('data-theme', gewaehltesTema);
+}
 
     // HILFSFUNKTION: Zeigt nur die gewünschte Auth-Karte und versteckt den Rest
     function zeigeAuthSchritt(schrittElement) {

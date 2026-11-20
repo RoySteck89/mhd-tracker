@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MITARBEITER-PROFIL & MONATS-STATISTIKEN (INKL. PIN-SCHNELL-LOGIN ABMELDUNG)
+   MITARBEITER-PROFIL & MONATS-STATISTIKEN (Übersichtlich & Modern)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!profilBehaelter) return;
 
     async function profilRendern() {
-        profilBehaelter.innerHTML = '<div style="text-align: center; padding: 20px; color: #6C757D;">Lade Profildaten...</div>';
+        profilBehaelter.innerHTML = '<div class="lade-text">Lade Profildaten...</div>';
 
         // 1. Benutzerdaten aus localStorage abrufen
         const gespeicherteLizenz = localStorage.getItem('kik_app_lizenz');
@@ -19,7 +19,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             personalnummer: '---'
         });
 
-        // Bereinige den Namen, falls noch Rollen-Zusätze in Klammern enthalten sind
         const reinerName = (benutzer.name || 'Benutzer').replace(/\s*\([^)]*\)/g, '').trim();
 
         let statistiken = {
@@ -46,7 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // 3. HTML-Struktur rendern
+        // 3. Strukturierte, moderne HTML-Ausgabe mit Design-Klassen statt harten Farben
         profilBehaelter.innerHTML = `
             <!-- Kopfkarte -->
             <div class="profil-kopfkarte">
@@ -56,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div style="font-size: 0.8rem; opacity: 0.85; margin-top: 2px;">Persönliche Erfolgsbilanz – ${statistiken.monatName}</div>
             </div>
 
-            <!-- Statistik-Grid (2x2) -->
+            <!-- Statistik-Grid (2 Spalten) -->
             <div class="profil-stats-grid">
                 <div class="profil-stat-box">
                     <div class="profil-stat-wert">${statistiken.scansMonat}</div>
@@ -70,16 +69,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             <!-- Ablauftag-Pflege Box -->
             <div class="profil-stat-box" style="text-align: left;">
-                <div class="profil-info-zeile" style="border: none; padding: 0;">
-                    <span class="profil-info-label" style="font-size: 0.9rem; font-weight: 700; color: #212529;">Ablauftag-Pflege</span>
-                    <span class="profil-stat-wert" style="font-size: 1.1rem; color: #0D6EFD;">${statistiken.zielstatusErfasst} Artikel</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-size: 0.9rem; font-weight: 700;" class="profil-text-titel">Ablauftag-Pflege</span>
+                    <span style="font-size: 1rem; font-weight: 700;" class="profil-text-highlight">${statistiken.zielstatusErfasst} Artikel</span>
                 </div>
-                <p style="font-size: 0.8rem; color: #6C757D; margin-top: 6px;">
+                <p style="font-size: 0.78rem; line-height: 1.3;" class="profil-text-sub">
                     Verkauf / Nicht verkauft erfolgreich am Stichtag verbucht.
                 </p>
             </div>
 
-            <!-- Detaillierte Stammdaten -->
+            <!-- Detaillierte Stammdaten als Karte -->
             <div class="profil-info-liste">
                 <div class="profil-info-zeile">
                     <span class="profil-info-label">Standort / Filiale</span>
@@ -101,15 +100,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             </div>
 
-            <!-- Profil-Aktionen (Sauberer Schichtwechsel-Login) -->
+            <!-- Profil-Aktionen (Schichtwechsel) -->
             <div class="profil-aktionen">
-                <button id="schaltflaeche-app-abmelden" class="btn-profil-gefahr" style="background: #DC3545; color: white;">
+                <button id="schaltflaeche-app-abmelden" class="btn-profil-gefahr">
                     🔒 Vom Gerät abmelden (Schichtwechsel)
                 </button>
             </div>
         `;
 
-        // Event-Listener für den Abmelden-Button (Beendet nur die Session, das Gerät bleibt aktiviert)
+        // Event-Listener für den Abmelden-Button
         const abmeldenBtn = document.getElementById('schaltflaeche-app-abmelden');
         if (abmeldenBtn) {
             abmeldenBtn.addEventListener('click', () => {

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MINIMALISTISCHE ARTIKELLISTE & LIVE-SUCHE (Alphabetisch, mit eigenen Modals)
+   MINIMALISTISCHE ARTIKELLISTE & LIVE-SUCHE (Inkl. MHD-Aufklappfunktion)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let alleArtikel = [];
 
-    // Eigenes, professionelles Bestätigungs-Modal (ersetzt hässliches confirm())
+    // Eigenes, professionelles Bestätigungs-Modal (ersetzt confirm())
     function zeigeEigenesBestätigungsModal(titel, nachricht, istGefahr, callback) {
         const altesOverlay = document.getElementById('custom-modal-overlay');
         if (altesOverlay) altesOverlay.remove();
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         listeAnzeigen(alleArtikel);
     }
 
-    // Funktion zur Darstellung der Artikelliste
+    // Funktion zur Darstellung der Artikelliste mit Aufklapp-Logik
     function listeAnzeigen(artikelListe, suchBegriff = '') {
         ergebnisBehaelter.innerHTML = '';
 
@@ -137,20 +137,107 @@ document.addEventListener('DOMContentLoaded', () => {
 
         artikelListe.forEach(artikel => {
             const element = document.createElement('div');
-            element.className = 'artikel-name-eintrag';
-            element.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #FFFFFF; border: 1px solid #E9ECEF; font-size: 1rem; font-weight: 500; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);';
+            element.className = 'artikel-karte-wrapper';
+            element.style.cssText = 'background: #FFFFFF; border: 1px solid #E9ECEF; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); overflow: hidden;';
             
             element.innerHTML = `
-                <span style="word-break: break-word; flex: 1; padding-right: 10px;">${artikel.artikelname}</span>
-                <div style="display: flex; gap: 6px; flex-shrink: 0;">
-                    <button class="btn-artikel-bearbeiten" data-id="${artikel.id}" data-name="${artikel.artikelname}" style="background: #E9ECEF; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;" title="Artikel bearbeiten">✏️</button>
-                    <button class="btn-artikel-loeschen" data-id="${artikel.id}" data-name="${artikel.artikelname}" style="background: #F8D7DA; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;" title="Artikel löschen">🗑️</button>
+                <div class="artikel-kopf" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; user-select: none;">
+                    <div style="display: flex; align-items: center; gap: 8px; flex: 1; padding-right: 10px;">
+                        <span class="aufklapp-pfeil" style="font-size: 0.8rem; color: #6C757D; transition: transform 0.2s;">▶</span>
+                        <span style="word-break: break-word; font-size: 1rem; font-weight: 500; color: #212529;">${artikel.artikelname}</span>
+                    </div>
+                    <div style="display: flex; gap: 6px; flex-shrink: 0;" onclick="event.stopPropagation()">
+                        <button class="btn-artikel-bearbeiten" data-id="${artikel.id}" data-name="${artikel.artikelname}" style="background: #E9ECEF; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;" title="Artikel bearbeiten">✏️</button>
+                        <button class="btn-artikel-loeschen" data-id="${artikel.id}" data-name="${artikel.artikelname}" style="background: #F8D7DA; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;" title="Artikel löschen">🗑️</button>
+                    </div>
+                </div>
+                <div class="artikel-mhd-details ausblenden" style="padding: 12px 16px; border-top: 1px solid #F1F3F5; background: #F8F9FA;">
+                    <div class="mhd-liste-inhalt" style="font-size: 0.88rem; color: #495057;">Lade erfasste MHDs...</div>
                 </div>
             `;
+
             ergebnisBehaelter.appendChild(element);
+
+            // Klick-Event zum Aufklappen der Karte
+            const kopfBereich = element.querySelector('.artikel-kopf');
+            const detailsBereich = element.querySelector('.artikel-mhd-details');
+            const pfeilSpan = element.querySelector('.aufklapp-pfeil');
+            const mhdInhaltContainer = element.querySelector('.mhd-liste-inhalt');
+
+            let mhdBereitsGeladen = false;
+
+            kopfBereich.addEventListener('click', async () => {
+                const istAusgeblendet = detailsBereich.classList.contains('ausblenden');
+
+                if (istAusgeblendet) {
+                    detailsBereich.classList.remove('ausblenden');
+                    pfeilSpan.style.transform = 'rotate(90deg)';
+
+                    if (!mhdBereitsGeladen) {
+                        mhdInhaltContainer.innerHTML = '<div style="color: #6C757D; font-style: italic;">Lade MHD-Einträge...</div>';
+                        
+                        try {
+                            const { data: mhdEintraege, error } = await window.supabaseVerbindung.client
+                                .from('mhd_eintraege')
+                                .select('*')
+                                .eq('artikel_id', artikel.id)
+                                .order('mhd_datum', { ascending: true });
+
+                            if (error) throw error;
+
+                            if (!mhdEintraege || mhdEintraege.length === 0) {
+                                mhdInhaltContainer.innerHTML = '<div style="color: #6C757D;">Keine MHD-Einträge für diesen Artikel erfasst.</div>';
+                            } else {
+                                mhdInhaltContainer.innerHTML = '';
+                                const ul = document.createElement('div');
+                                ul.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
+
+                                mhdEintraege.forEach(eintrag => {
+                                    // Deutsches Datumsformat (DD.MM.YYYY)
+                                    let deutschesDatum = eintrag.mhd_datum;
+                                    if (eintrag.mhd_datum && eintrag.mhd_datum.includes('-')) {
+                                        const teile = eintrag.mhd_datum.split('-');
+                                        if (teile.length === 3) {
+                                            deutschesDatum = `${teile[2]}.${teile[1]}.${teile[0]}`;
+                                        }
+                                    }
+
+                                    // Status-Badge Farben
+                                    let badgeHintergrund = '#E2E8F0';
+                                    let badgeTextFarbe = '#334155';
+                                    if (eintrag.status === 'aktiv') { badgeHintergrund = '#FEF3C7'; badgeTextFarbe = '#92400E'; }
+                                    else if (eintrag.status === 'reduziert') { badgeHintergrund = '#FFEDD5'; badgeTextFarbe = '#C2410C'; }
+                                    else if (eintrag.status === 'verkauft') { badgeHintergrund = '#DCFCE7'; badgeTextFarbe = '#166534'; }
+                                    else if (eintrag.status === 'entsorgt') { badgeHintergrund = '#FEE2E2'; badgeTextFarbe = '#991B1B'; }
+
+                                    const eintragDiv = document.createElement('div');
+                                    eintragDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; padding: 8px 12px; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 0.85rem;';
+                                    
+                                    // Hier wurde der Filial-Bezug (Filiale: ...) komplett entfernt:
+                                    eintragDiv.innerHTML = `
+                                        <div>
+                                            <span>MHD: <strong>${deutschesDatum}</strong></span>
+                                        </div>
+                                        <span style="padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; background: ${badgeHintergrund}; color: ${badgeTextFarbe}; text-transform: uppercase;">${eintrag.status}</span>
+                                    `;
+                                    ul.appendChild(eintragDiv);
+                                });
+                                mhdInhaltContainer.appendChild(ul);
+                            }
+                            mhdBereitsGeladen = true;
+                        } catch (err) {
+                            console.error('Fehler beim Laden der MHDs:', err);
+                            mhdInhaltContainer.innerHTML = '<div style="color: #DC3545;">Fehler beim Laden der MHD-Einträge.</div>';
+                        }
+                    }
+                } else {
+                    detailsBereich.classList.add('ausblenden');
+                    pfeilSpan.style.transform = 'rotate(0deg)';
+                }
+            });
         });
 
-        // Event-Listener für Bearbeiten (mit eigenem Eingabe-Modal)
+        // Event-Listener für Bearbeiten
         document.querySelectorAll('.btn-artikel-bearbeiten').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const id = e.target.getAttribute('data-id');
@@ -173,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Event-Listener für Löschen (mit eigenem Sicherheits-Modal)
+        // Event-Listener für Löschen
         document.querySelectorAll('.btn-artikel-loeschen').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const id = e.target.getAttribute('data-id');
@@ -182,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 zeigeEigenesBestätigungsModal(
                     "Artikel löschen",
                     `Soll der Artikel <strong>"${artikelName}"</strong> wirklich unwiderruflich aus der Datenbank gelöscht werden?`,
-                    true, // true = Roter Gefahren-Button
+                    true,
                     async (bestätigt) => {
                         if (!bestätigt) return;
                         try {
@@ -194,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (error) throw error;
                             artikelLaden();
                         } catch (err) {
-                            alert('Fehler beim Löschen (möglicherweise noch verknüpfte Einträge vorhanden): ' + err.message);
+                            alert('Fehler beim Löschen (möglicherweise noch verknüpfte MHD-Einträge vorhanden): ' + err.message);
                         }
                     }
                 );
@@ -223,5 +310,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     artikelLaden();
-    console.log('Artikel-Suche (Alphabetisch, mit eigenen Modals) erfolgreich initialisiert.');
+    console.log('Artikel-Suche erfolgreich initialisiert.');
 });

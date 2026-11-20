@@ -1,0 +1,317 @@
+/* ==========================================================================
+   MHD SCANNER-APP — MODERNES TÜRKIS / TEAL DESIGN (FEHLERFREI)
+   ========================================================================== */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    background-color: #E2E8F0;
+}
+
+#app-container {
+    width: 100%;
+    max-width: 480px;
+    height: 100vh;
+    max-height: 920px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 16px 40px rgba(13, 148, 136, 0.15);
+    overflow: hidden;
+    background-color: #F8FAFC;
+    color: #0F172A;
+}
+
+/* --- KOPFZEILE (Header) --- */
+.app-header {
+    flex-shrink: 0;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    background-color: #0F766E !important;
+    color: #FFFFFF !important;
+    border-bottom: 1px solid #115E59 !important;
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.2);
+}
+
+.header-titel {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #FFFFFF !important;
+}
+
+.header-rechte-seite {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+}
+
+.benutzer-badge {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    color: #FFFFFF !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+}
+
+.view-switcher {
+    background-color: #FBBF24 !important;
+    color: #0F172A !important;
+    font-weight: 700;
+    border: none !important;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.view-switcher:hover {
+    background-color: #F59E0B !important;
+}
+
+/* --- HAUPT-INHALTSBEREICH --- */
+#haupt-inhalt {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    background-color: #F8FAFC !important;
+    color: #0F172A !important;
+}
+
+/* --- UNTERE NAVIGATION (Sauber & Klickbar) --- */
+#fuss-navigation {
+    flex-shrink: 0;
+    height: 64px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 1px solid rgba(15, 118, 110, 0.15);
+    background-color: #FFFFFF !important;
+    width: 100%;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.nav-schaltflaeche {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: #64748B;
+    background: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    gap: 4px;
+    padding: 0 !important;
+    width: auto !important;
+    transition: color 0.2s ease;
+}
+.nav-schaltflaeche:hover {
+    color: #0D9488 !important;
+    background: none !important;
+}
+.nav-schaltflaeche.aktiv {
+    color: #0D9488 !important;
+    font-weight: 700;
+    background: none !important;
+}
+
+/* --- ANSICHTEN & KARTEN --- */
+.app-ansicht {
+    display: none !important;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+.app-ansicht.aktiv {
+    display: flex !important;
+    flex-direction: column;
+    width: 100%;
+}
+.ausblenden {
+    display: none !important;
+}
+
+.app-bereich {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.erfassungs-karte,
+.karten-bereich,
+.auth-karte,
+.admin-statistik-karte,
+.karten-hintergrund,
+.profil-stat-box,
+.profil-info-liste,
+.admin-schnell-liste > div,
+.artikel-karte-wrapper {
+    padding: 16px 18px;
+    background-color: #FFFFFF !important;
+    border: 1px solid rgba(13, 148, 136, 0.15) !important;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.04);
+}
+
+/* --- FORMULARE & INPUTS --- */
+input[type="text"],
+input[type="date"],
+input[type="number"],
+input[type="password"],
+select {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    border: 1px solid #CBD5E1;
+    border-radius: 8px;
+    background-color: #FFFFFF;
+    color: #0F172A;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+input:focus, select:focus {
+    border-color: #0D9488;
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+}
+
+/* --- NORMALE BUTTONS --- */
+.schaltflaeche-primaer, 
+button:not(.nav-schaltflaeche):not(.admin-subtab-btn) {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+    background-color: #0D9488 !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+.schaltflaeche-primaer:hover, 
+button:not(.nav-schaltflaeche):not(.admin-subtab-btn):hover {
+    background-color: #0F766E !important;
+}
+button:active {
+    transform: scale(0.98);
+}
+
+.schaltflaeche-gruen {
+    background-color: #10B981 !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background-color 0.2s ease;
+}
+.schaltflaeche-gruen:hover {
+    background-color: #059669 !important;
+}
+
+/* --- PROFIL KOPFKARTE --- */
+.profil-kopfkarte {
+    background: linear-gradient(135deg, #0F766E 0%, #0D9488 100%) !important;
+    color: #FFFFFF !important;
+    border-radius: 16px;
+    padding: 24px 20px;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(13, 148, 136, 0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.profil-avatar-kreis {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+}
+
+.profil-rolle-badge {
+    background: #FBBF24 !important;
+    color: #0F172A !important;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.profil-stat-wert {
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: #0D9488 !important;
+}
+.profil-stat-wert.gruen {
+    color: #10B981 !important;
+}
+
+.btn-profil-gefahr {
+    width: 100%;
+    min-height: 48px;
+    background-color: #EF4444 !important;
+    color: #FFFFFF !important;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+.btn-profil-gefahr:hover {
+    background-color: #DC2626 !important;
+}

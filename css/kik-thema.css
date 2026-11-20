@@ -1,40 +1,62 @@
 /* ==========================================================================
-   3. KIK-KLASSIK THEMA (Traditionelles KiK Corporate Rot / Weiß)
+   KIK-KLASSIK THEMA (Farben & Corporate Identity)
    ========================================================================== */
 
-/* Kopfzeile im klassischen KiK-Rot */
+/* Header im klassischen KiK-Rot */
 body[data-theme="kik"] .app-header {
     background-color: #CC0000 !important;
     color: #FFFFFF !important;
+    border-bottom: 1px solid #990000 !important;
 }
 
-/* Primäre Schaltflächen im Rot-Ton */
+body[data-theme="kik"] .header-titel {
+    color: #FFFFFF !important;
+}
+
+body[data-theme="kik"] .benutzer-badge {
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    color: #FFFFFF !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+body[data-theme="kik"] .view-switcher {
+    background-color: #FFC107 !important;
+    color: #1E293B !important;
+    font-weight: 700;
+    border: none !important;
+}
+
+/* Primäre Schaltflächen (z.B. Barcode scannen, Speichern) in KiK-Rot */
 body[data-theme="kik"] .schaltflaeche-primaer {
     background-color: #CC0000 !important;
     color: #FFFFFF !important;
+    border: none !important;
 }
 
-body[data-theme="kik"] .schaltflaeche-primaer:hover {
-    background-color: #990000 !important;
+/* Grüne Schaltflächen */
+body[data-theme="kik"] .schaltflaeche-gruen {
+    background-color: #10B981 !important;
+    color: #FFFFFF !important;
+    border: none !important;
 }
 
-/* Aktive Navigationsschaltfläche unten */
+/* Aktives Element in der unteren Navigation */
 body[data-theme="kik"] .nav-schaltflaeche.aktiv {
     color: #CC0000 !important;
+    font-weight: 700;
 }
 
-/* Admin-Subtab aktiv */
-body[data-theme="kik"] .admin-subtab-btn.aktiv {
-    background-color: #CC0000 !important;
+/* Profil Kopfkarte als edler roter Verlauf */
+body[data-theme="kik"] .profil-kopfkarte {
+    background: linear-gradient(135deg, #CC0000 0%, #990000 100%) !important;
     color: #FFFFFF !important;
 }
 
-/* Profil-Kopfkarte im KiK-Rot Verlauf */
-body[data-theme="kik"] .profil-kopfkarte {
-    background: linear-gradient(135deg, #CC0000 0%, #990000 100%) !important;
+body[data-theme="kik"] .profil-rolle-badge {
+    background-color: #FFC107 !important;
+    color: #1E293B !important;
 }
 
-body[data-theme="kik"] .profil-rolle-badge {
-    background: #FFFFFF !important;
+body[data-theme="kik"] .profil-stat-wert {
     color: #CC0000 !important;
 }

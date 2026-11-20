@@ -1,115 +1,14 @@
 /* ==========================================================================
-   2. STANDARD-DESIGN (Blau / Gelb & Neutrale Karten)
+   PROFIL-LAYOUT & STATISTIKEN (Modern & Übersichtlich)
    ========================================================================== */
 
-#app-container {
-    background-color: #F8F9FA;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-    border-radius: 16px;
-}
-
-.bereichs-titel {
-    color: #6C757D;
-}
-
-/* Karten-Styling */
-.karten-bereich,
-.artikel-karte,
-.statistik-karte {
-    background: #FFFFFF;
-    border-radius: 12px;
-    padding: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-/* Header in Blau */
-.app-header {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px 16px;
-    background-color: #003366 !important;
-    color: #FFFFFF !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.header-titel {
-    font-size: 1.15rem;
-    font-weight: bold;
-    letter-spacing: 0.5px;
-}
-
-.header-rechte-seite {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    width: 100%;
-}
-
-.benutzer-badge {
-    background: rgba(255, 255, 255, 0.15);
-    padding: 5px 10px;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.view-switcher {
-    padding: 5px 8px;
-    border-radius: 6px;
-    border: none;
-    background: #FFC107;
-    color: #000;
-    font-weight: bold;
-    font-size: 0.85rem;
-    cursor: pointer;
-}
-
-/* Primäre Schaltflächen in Blau */
-.schaltflaeche-primaer {
-    background-color: #003366 !important;
-    color: #FFFFFF !important;
-}
-
-.schaltflaeche-primaer:hover {
-    background-color: #002244 !important;
-}
-
-/* Signalfarben-Bordüren für Artikel-Status */
-.artikel-karte.status-warnung {
-    border-left: 5px solid #FFC107;
-}
-
-.artikel-karte.status-alarm {
-    border-left: 5px solid #DC3545;
-}
-
-/* Navigation Standard */
-#fuss-navigation {
-    background: #FFFFFF;
-    border-top: 1px solid #E9ECEF;
-}
-
-.nav-schaltflaeche {
-    color: #6C757D;
-}
-
-.nav-schaltflaeche.aktiv {
-    color: #003366 !important;
-    font-weight: 700;
-}
-
-/* Profil-Design */
 .profil-kopfkarte {
     background: linear-gradient(135deg, #003366 0%, #004080 100%);
     color: #FFFFFF;
-    border-radius: 12px;
-    padding: 24px 20px;
+    border-radius: 16px;
+    padding: 28px 20px;
     text-align: center;
-    box-shadow: 0 4px 12px rgba(0, 51, 102, 0.15);
+    box-shadow: 0 8px 20px rgba(0, 51, 102, 0.2);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -118,29 +17,138 @@
 }
 
 .profil-avatar-kreis {
-    width: 60px;
-    height: 60px;
+    width: 64px;
+    height: 64px;
     background: rgba(255, 255, 255, 0.15);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.6rem;
+    font-size: 1.7rem;
     border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .profil-name {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     font-weight: 700;
+    letter-spacing: 0.3px;
 }
 
 .profil-rolle-badge {
     background: #FFC107;
-    color: #212529;
-    padding: 4px 14px;
+    color: #1E293B;
+    padding: 5px 16px;
     border-radius: 20px;
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
+    letter-spacing: 0.8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* Statistik Grid (2 Spalten) */
+.profil-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.profil-stat-box {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 18px 14px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.profil-stat-wert {
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: #003366;
+    line-height: 1.2;
+}
+
+.profil-stat-wert.gruen {
+    color: #10B981;
+}
+
+.profil-stat-label {
+    font-size: 0.75rem;
+    color: #64748B;
+    margin-top: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+/* Info-Liste als edle Karte */
+.profil-info-liste {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.profil-info-zeile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+.profil-info-zeile:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.profil-info-label {
+    font-size: 0.85rem;
+    color: #64748B;
+    font-weight: 600;
+}
+
+.profil-info-wert {
+    font-size: 0.9rem;
+    color: #1E293B;
+    font-weight: 600;
+    text-align: right;
+}
+
+/* Abmelde-Button (Gefahr / Schichtwechsel) */
+.profil-aktionen {
+    margin-top: 4px;
+}
+
+.btn-profil-gefahr {
+    width: 100%;
+    min-height: 52px;
+    background-color: #EF4444 !important;
+    color: #FFFFFF !important;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+    transition: background-color 0.2s, transform 0.15s;
+}
+
+.btn-profil-gefahr:hover {
+    background-color: #DC2626 !important;
+}
+
+.btn-profil-gefahr:active {
+    transform: scale(0.98);
 }
