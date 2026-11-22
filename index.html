@@ -17,6 +17,28 @@
 </head>
 <body>
 
+    <!-- MODERNER START-SCREEN (SPLASH SCREEN) -->
+    <div id="app-splash-screen" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(135deg, #0F766E 0%, #0D9488 100%); z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; transition: opacity 0.4s ease, visibility 0.4s ease; color: white;">
+        <div style="width: 96px; height: 96px; background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.3); border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; box-shadow: 0 12px 30px rgba(0,0,0,0.2);">
+            📦
+        </div>
+        <div style="text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px;">MHD Scanner-App</div>
+            <div style="font-size: 0.85rem; opacity: 0.85; font-weight: 500; letter-spacing: 0.5px;">Warenprüfung & Frische-Kontrolle</div>
+        </div>
+        <div style="display: flex; gap: 6px; margin-top: 20px;">
+            <div style="width: 8px; height: 8px; background: white; border-radius: 50%; opacity: 0.9; animation: pulse 1.2s infinite ease-in-out;"></div>
+            <div style="width: 8px; height: 8px; background: white; border-radius: 50%; opacity: 0.6; animation: pulse 1.2s infinite ease-in-out 0.2s;"></div>
+            <div style="width: 8px; height: 8px; background: white; border-radius: 50%; opacity: 0.3; animation: pulse 1.2s infinite ease-in-out 0.4s;"></div>
+        </div>
+    </div>
+    <style>
+    @keyframes pulse {
+        0%, 100% { transform: scale(0.8); opacity: 0.4; }
+        50% { transform: scale(1.2); opacity: 1; }
+    }
+    </style>
+
     <!-- Haupt-Container der App -->
     <div id="app-container">
 
@@ -409,6 +431,20 @@
         </nav>
 
     </div>
+
+    <!-- Splash-Screen Ausblende-Logik -->
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const splash = document.getElementById('app-splash-screen');
+                if (splash) {
+                    splash.style.opacity = '0';
+                    splash.style.visibility = 'hidden';
+                    setTimeout(() => splash.remove(), 400);
+                }
+            }, 600);
+        });
+    </script>
 
     <!-- JavaScript-Dateien -->
 	<script src="js/globale-modals.js"></script>
