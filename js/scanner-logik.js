@@ -268,7 +268,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             alert('✅ MHD-Eintrag erfolgreich gespeichert!');
             if (barcodeInput) barcodeInput.value = '';
+            
+            // Aktive Filialartikel aktualisieren
             aktiveFilialArtikelLaden();
+
+            // Auch die Artikelliste im Hintergrund sofort aktualisieren, damit neue Artikel sofort da sind
+            if (typeof window.artikelLaden === 'function') {
+                window.artikelLaden();
+            }
 
         } catch (err) {
             alert('Fehler beim Speichern: ' + err.message);
@@ -349,7 +356,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         .update({ status: neuerStatus })
                         .eq('id', id);
 
-                    if (!updateError) aktiveFilialArtikelLaden();
+                    if (!updateError) {
+                        aktiveFilialArtikelLaden();
+                        if (typeof window.artikelLaden === 'function') {
+                            window.artikelLaden();
+                        }
+                    }
                 });
             });
 

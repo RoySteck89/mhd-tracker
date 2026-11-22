@@ -65,7 +65,7 @@
                             <input type="date" id="eingabe-mhd">
                         </div>
 
-                        <!-- NEU: Kategorie-Auswahl bei der Erfassung -->
+                        <!-- Kategorie-Auswahl bei der Erfassung -->
                         <div class="formular-gruppe">
                             <label for="eingabe-kategorie">Warengruppe / Kategorie</label>
                             <select id="eingabe-kategorie">
@@ -421,6 +421,41 @@
     <script src="js/auth.js"></script>
     <script src="js/admin-dashboard.js"></script>
 	<script src="js/bezirksleitung-dashboard.js"></script>
+
+    <!-- Ansichts-Wiederherstellung bei Pull-to-Refresh / Reload -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const gespeicherteAnsicht = sessionStorage.getItem('kik_aktive_ansicht');
+            if (gespeicherteAnsicht) {
+                const zielBtn = document.querySelector(`.nav-schaltflaeche[data-ziel="${gespeicherteAnsicht}"]`);
+                const zielAnsicht = document.getElementById(gespeicherteAnsicht);
+                if (zielBtn && zielAnsicht) {
+                    document.querySelectorAll('.app-ansicht').forEach(a => {
+                        a.classList.add('ausblenden');
+                        a.classList.remove('aktiv');
+                    });
+                    document.querySelectorAll('.nav-schaltflaeche').forEach(b => b.classList.remove('aktiv'));
+                    
+                    zielAnsicht.classList.remove('ausblenden');
+                    zielAnsicht.classList.add('aktiv');
+                    zielBtn.classList.add('aktiv');
+
+                    if (gespeicherteAnsicht === 'ansicht-suche' && typeof window.artikelLaden === 'function') {
+                        window.artikelLaden();
+                    }
+                }
+            }
+
+            document.querySelectorAll('.nav-schaltflaeche').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const ziel = btn.getAttribute('data-ziel');
+                    if (ziel) {
+                        sessionStorage.setItem('kik_aktive_ansicht', ziel);
+                    }
+                });
+            });
+        });
+    </script>
 
     <!-- Service-Worker Registrierung -->
     <script>

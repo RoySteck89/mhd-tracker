@@ -314,10 +314,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                                                     if (loeschFehler) throw loeschFehler;
 
-                                                    // Zeile direkt aus dem DOM entfernen oder Ansicht zuklappen
                                                     loeschBtn.closest('div').parentElement.remove();
                                                     
-                                                    // Falls vorhanden, auch die aktive Liste im Scanner aktualisieren
                                                     if (typeof window.aktiveFilialArtikelLaden === 'function') {
                                                         window.aktiveFilialArtikelLaden();
                                                     }
