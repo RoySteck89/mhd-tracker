@@ -1,13 +1,14 @@
 /* ==========================================================================
-   PULL-TO-REFRESH LOGIK FÜR MOBILE GERÄTE
+   PULL-TO-REFRESH LOGIK (LÄDT NUR DIE DATEN NEU, STATT DIE GANZE SEITE ZU RESETTEN)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
     let touchStartY = 0;
+    let touchStartX = 0;
     let istAmAnfang = false;
     const ladeIndikatorHöhe = 60;
 
-    // Erstelle einen kleinen visuellen Lade-Indikator oben im Body
+    // Lade-Indikator oben erstellen
     const ladeIndikator = document.createElement('div');
     ladeIndikator.id = 'pull-to-refresh-indicator';
     ladeIndikator.style.cssText = `
@@ -24,16 +25,16 @@ document.addEventListener('DOMContentLoaded', () => {
         font-weight: 600;
         font-size: 0.9rem;
         z-index: 99999;
-        transition: transform 0.2s ease;
+        transition: transform 0.25s ease;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     `;
-    ladeIndikator.innerHTML = '🔄 Aktualisiere Ansicht...';
+    ladeIndikator.innerHTML = '🔄 Aktualisiere Daten...';
     document.body.prepend(ladeIndikator);
 
     window.addEventListener('touchstart', (e) => {
-        // Prüfen, ob der Nutzer ganz oben auf der Seite ist
-        if (window.scrollY === 0) {
+        if (window.scrollY <= 0) {
             touchStartY = e.touches[0].clientY;
+            touchStartX = e.touches[0].clientX;
             istAmAnfang = true;
         } else {
             istAmAnfang = false;
@@ -43,36 +44,45 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('touchmove', (e) => {
         if (!istAmAnfang) return;
         const currentY = e.touches[0].clientY;
-        const diff = currentY - touchStartY;
+        const currentX = e.touches[0].clientX;
+        const diffY = currentY - touchStartY;
+        const diffX = Math.abs(currentX - touchStartX);
 
-        // Wenn der Nutzer nach unten zieht und ganz oben steht
-        if (diff > 80 && window.scrollY === 0) {
-            ladeIndikator.style.transform = `translateY(${ladeIndikatorHöhe}px)`;
+        // Erst ab einer echten vertikalen Abwärtsbewegung anzeigen
+        if (diffY > 50 && diffY > diffX * 1.5 && window.scrollY <= 0) {
+            const offset = Math.min(diffY / 2.5, ladeIndikatorHöhe);
+            ladeIndikator.style.transform = `translateY(${offset}px)`;
         }
     }, { passive: true });
 
     window.addEventListener('touchend', (e) => {
         if (!istAmAnfang) return;
         const touchEndY = e.changedTouches[0].clientY;
-        const diff = touchEndY - touchStartY;
+        const diffY = touchEndY - touchStartY;
 
-        // Wenn weit genug nach unten gezogen wurde, Ladevorgang starten
-        if (diff > 100 && window.scrollY === 0) {
+        // Hoher Schwellenwert (160px), damit es beim normalen Scrollen nicht auslöst
+        if (diffY > 160 && window.scrollY <= 0) {
             ladeIndikator.style.transform = `translateY(${ladeIndikatorHöhe}px)`;
             
-            // Ermitteln, welche Ansicht aktuell aktiv ist
+            // Finde heraus, welche Ansicht gerade aktiv ist, und lade nur deren Daten neu
             const aktiveAnsicht = document.querySelector('.app-ansicht:not(.ausblenden)');
-            const aktiveAnsichtId = aktiveAnsicht ? aktiveAnsicht.id : 'ansicht-startseite';
             
-            // Ansicht in sessionStorage speichern, damit sie nach dem Reload exakt erhalten bleibt
-            sessionStorage.setItem('kik_aktive_ansicht', aktiveAnsichtId);
+            if (aktiveAnsicht) {
+                if (aktiveAnsicht.id === 'ansicht-suche' && typeof window.artikelLaden === 'function') {
+                    window.artikelLaden();
+                } else if (aktiveAnsicht.id === 'ansicht-startseite' && typeof window.aktiveFilialArtikelLaden === 'function') {
+                    window.aktiveFilialArtikelLaden();
+                } else {
+                    // Fallback
+                    location.reload();
+                }
+            }
 
-            // Kurze Pause für die Animation, dann Seite neu laden
+            // Indikator nach kurzer Zeit wieder nach oben verstecken
             setTimeout(() => {
-                location.reload();
-            }, 400);
+                ladeIndikator.style.transform = 'translateY(0)';
+            }, 800);
         } else {
-            // Indikator wieder verstecken, wenn nicht weit genug gezogen wurde
             ladeIndikator.style.transform = 'translateY(0)';
         }
         istAmAnfang = false;
