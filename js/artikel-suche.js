@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MINIMALISTISCHE ARTIKELLISTE & LIVE-SUCHE (Inkl. MHD-Aufklappfunktion)
+   MINIMALISTISCHE ARTIKELLISTE & LIVE-SUCHE (MIT STRENGEM LOGIN-SCHUTZ)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -10,7 +10,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let alleArtikel = [];
 
-    // Eigenes, professionelles Bestätigungs-Modal (ersetzt confirm())
+    function istAngemeldet() {
+        const session = sessionStorage.getItem('kik_app_lizenz');
+        if (!session) return false;
+        try {
+            const daten = JSON.parse(session);
+            return Boolean(daten && daten.rolle);
+        } catch (e) {
+            return false;
+        }
+    }
+
     function zeigeEigenesBestätigungsModal(titel, nachricht, istGefahr, callback) {
         const altesOverlay = document.getElementById('custom-modal-overlay');
         if (altesOverlay) altesOverlay.remove();
@@ -45,7 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // Eigenes Eingabe-Modal (für Bearbeiten)
     function zeigeEigenesEingabeModal(titel, vorabText, callback) {
         const altesOverlay = document.getElementById('custom-modal-overlay');
         if (altesOverlay) altesOverlay.remove();
@@ -88,8 +97,14 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // Artikel aus der Supabase-Datenbank laden
+    // Artikel aus der Supabase-Datenbank laden (NUR wenn angemeldet!)
     async function artikelLaden() {
+        if (!istAngemeldet()) {
+            alleArtikel = [];
+            ergebnisBehaelter.innerHTML = '';
+            return;
+        }
+
         if (!window.supabaseVerbindung) {
             console.error('Datenbank-Verbindung nicht verfügbar.');
             return;
@@ -106,8 +121,14 @@ document.addEventListener('DOMContentLoaded', () => {
         listeAnzeigen(alleArtikel);
     }
 
-    // Funktion zur Darstellung der Artikelliste mit Aufklapp-Logik
+    window.artikelLaden = artikelLaden;
+
     function listeAnzeigen(artikelListe, suchBegriff = '') {
+        if (!istAngemeldet()) {
+            ergebnisBehaelter.innerHTML = '';
+            return;
+        }
+
         ergebnisBehaelter.innerHTML = '';
 
         const zählerDiv = document.createElement('div');
@@ -158,7 +179,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             ergebnisBehaelter.appendChild(element);
 
-            // Klick-Event zum Aufklappen der Karte
             const kopfBereich = element.querySelector('.artikel-kopf');
             const detailsBereich = element.querySelector('.artikel-mhd-details');
             const pfeilSpan = element.querySelector('.aufklapp-pfeil');
@@ -167,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let mhdBereitsGeladen = false;
 
             kopfBereich.addEventListener('click', async () => {
+                if (!istAngemeldet()) return;
                 const istAusgeblendet = detailsBereich.classList.contains('ausblenden');
 
                 if (istAusgeblendet) {
@@ -193,7 +214,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ul.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
 
                                 mhdEintraege.forEach(eintrag => {
-                                    // Deutsches Datumsformat (DD.MM.YYYY)
                                     let deutschesDatum = eintrag.mhd_datum;
                                     if (eintrag.mhd_datum && eintrag.mhd_datum.includes('-')) {
                                         const teile = eintrag.mhd_datum.split('-');
@@ -202,7 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                         }
                                     }
 
-                                    // Status-Badge Farben
                                     let badgeHintergrund = '#E2E8F0';
                                     let badgeTextFarbe = '#334155';
                                     if (eintrag.status === 'aktiv') { badgeHintergrund = '#FEF3C7'; badgeTextFarbe = '#92400E'; }
@@ -213,7 +232,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                     const eintragDiv = document.createElement('div');
                                     eintragDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; padding: 8px 12px; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 0.85rem;';
                                     
-                                    // Hier wurde der Filial-Bezug (Filiale: ...) komplett entfernt:
                                     eintragDiv.innerHTML = `
                                         <div>
                                             <span>MHD: <strong>${deutschesDatum}</strong></span>
@@ -237,14 +255,17 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Event-Listener für Bearbeiten
         document.querySelectorAll('.btn-artikel-bearbeiten').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                if (!istAngemeldet()) {
+                    alert('Zugriff verweigert: Bitte zuerst anmelden.');
+                    return;
+                }
                 const id = e.target.getAttribute('data-id');
                 const alterName = e.target.getAttribute('data-name');
                 
                 zeigeEigenesEingabeModal("Artikel bearbeiten", alterName, async (neuerName) => {
-                    if (!neuerName || neuerName === alterName) return;
+                    if (!neuerName || neuerName === alterName || !istAngemeldet()) return;
                     try {
                         const { error } = await window.supabaseVerbindung.client
                             .from('artikel')
@@ -260,9 +281,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Event-Listener für Löschen
         document.querySelectorAll('.btn-artikel-loeschen').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                if (!istAngemeldet()) {
+                    alert('Zugriff verweigert: Bitte zuerst anmelden.');
+                    return;
+                }
                 const id = e.target.getAttribute('data-id');
                 const artikelName = e.target.getAttribute('data-name');
                 
@@ -271,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     `Soll der Artikel <strong>"${artikelName}"</strong> wirklich unwiderruflich aus der Datenbank gelöscht werden?`,
                     true,
                     async (bestätigt) => {
-                        if (!bestätigt) return;
+                        if (!bestätigt || !istAngemeldet()) return;
                         try {
                             const { error } = await window.supabaseVerbindung.client
                                 .from('artikel')
@@ -290,6 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     suchEingabe.addEventListener('input', (e) => {
+        if (!istAngemeldet()) return;
         const eingabeWert = e.target.value.trim().toLowerCase();
 
         if (eingabeWert === '') {
@@ -309,6 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (startTab) startTab.click();
     }
 
-    artikelLaden();
-    console.log('Artikel-Suche erfolgreich initialisiert.');
+    if (istAngemeldet()) {
+        artikelLaden();
+    }
 });

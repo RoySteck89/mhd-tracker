@@ -1,5 +1,5 @@
 /* ==========================================================================
-   BEZIRKSLEITUNG (BL) STEUERUNGSZENTRALE (SAUBER GETRENNT VON CSS)
+   BEZIRKSLEITUNG (BL) STEUERUNGSZENTRALE (SICHER MIT SESSION-STORAGE)
    ========================================================================== */
 
 async function blFilialenLaden() {
@@ -81,8 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Direkt laden, wenn Ansicht aktiv ist
-    const gespeicherteLizenz = localStorage.getItem('kik_app_lizenz');
+    const gespeicherteLizenz = sessionStorage.getItem('kik_app_lizenz');
     if (gespeicherteLizenz) {
         const lizenz = JSON.parse(gespeicherteLizenz);
         if (lizenz.rolle === 'Bezirksleitung') {

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LIZENZ- & AKTIVIERUNGSLOGIK (INKL. PIN-SCHNELLLOGIN & TAB-ERHALT)
+   LIZENZ- & AKTIVIERUNGSLOGIK (SICHERER LOGIN-ZWANG & SESSION-STORAGE)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const benutzerAnzeige = document.getElementById('benutzer-anzeige');
     const viewSwitcher = document.getElementById('admin-view-switcher');
+    const fussNavigation = document.getElementById('fuss-navigation');
 
     const bearbeitenKarte = document.getElementById('tl-mitarbeiter-bearbeiten-karte');
     const bearbeitenIdInput = document.getElementById('tl-bearbeiten-id');
@@ -35,14 +36,29 @@ document.addEventListener('DOMContentLoaded', () => {
     let temporaererLizenzSpeicher = null;
 
     function wendeThemaAn(themaName) {
-    const gewaehltesTema = themaName || 'kik';
-    document.body.setAttribute('data-theme', gewaehltesTema);
-}
+        const gewaehltesTema = themaName || 'kik';
+        document.body.setAttribute('data-theme', gewaehltesTema);
+    }
 
-    // HILFSFUNKTION: Zeigt nur die gewünschte Auth-Karte und versteckt den Rest
+    function alleAppAnsichtenSperren() {
+        document.querySelectorAll('.app-ansicht').forEach(ansicht => {
+            if (ansicht.id !== 'ansicht-aktivierung') {
+                ansicht.classList.remove('aktiv');
+                ansicht.classList.add('ausblenden');
+                ansicht.style.display = 'none';
+            }
+        });
+        if (fussNavigation) {
+            fussNavigation.style.display = 'none';
+        }
+    }
+
     function zeigeAuthSchritt(schrittElement) {
+        alleAppAnsichtenSperren();
+
         if (ansichtAktivierung) {
             ansichtAktivierung.classList.remove('ausblenden');
+            ansichtAktivierung.classList.add('aktiv');
             ansichtAktivierung.style.display = 'flex';
         }
         
@@ -60,6 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function zeigeAktivierung() {
+        localStorage.removeItem('kik_app_lizenz');
+        sessionStorage.removeItem('kik_app_lizenz');
+        window.aktuellerBenutzer = null;
         zeigeAuthSchritt(schrittLogin);
         if (benutzerAnzeige) benutzerAnzeige.textContent = 'Nicht angemeldet';
     }
@@ -115,10 +134,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     thema: lizenz.thema || 'kik'
                 };
 
-                localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
-                // Bei frischem Login immer auf Startseite
+                sessionStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
                 sessionStorage.removeItem('kik_aktive_ansicht');
                 
+                if (persnrInput) persnrInput.value = '';
+                if (pinInput) pinInput.value = '';
+
                 alert(`Erfolgreich angemeldet als: ${lizenzInfo.name} (${lizenzInfo.rolle})`);
                 initialisiereAppSession(lizenzInfo);
 
@@ -130,7 +151,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function pruefeAktivierung() {
-        const gespeicherteLizenz = localStorage.getItem('kik_app_lizenz');
+        localStorage.removeItem('kik_app_lizenz');
+
+        const gespeicherteLizenz = sessionStorage.getItem('kik_app_lizenz');
 
         if (!gespeicherteLizenz) {
             zeigeAktivierung();
@@ -143,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 initialisiereAppSession(lizenzData);
             } catch (err) {
                 console.error('Fehler beim Laden der Session, setze zurück:', err);
-                localStorage.removeItem('kik_app_lizenz');
+                sessionStorage.removeItem('kik_app_lizenz');
                 zeigeAktivierung();
             }
         }
@@ -214,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     thema: lizenz.thema || 'kik'
                 };
 
-                localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
+                sessionStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
                 sessionStorage.removeItem('kik_aktive_ansicht');
                 alert(`App erfolgreich aktiviert als: ${lizenzInfo.rolle}`);
                 initialisiereAppSession(lizenzInfo);
@@ -288,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     thema: 'kik'
                 };
 
-                localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
+                sessionStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
                 sessionStorage.removeItem('kik_aktive_ansicht');
                 alert(`Filiale "${filialEingabe}" erfolgreich eingerichtet!`);
                 initialisiereAppSession(lizenzInfo);
@@ -338,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     thema: 'kik'
                 };
 
-                localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
+                sessionStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
                 sessionStorage.removeItem('kik_aktive_ansicht');
                 alert(`Bezirksleitung "${name}" erfolgreich eingerichtet!`);
                 initialisiereAppSession(lizenzInfo);
@@ -410,7 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     thema: 'kik'
                 };
 
-                localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
+                sessionStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
                 sessionStorage.removeItem('kik_aktive_ansicht');
                 alert(`Mitarbeiter-Profil "${name}" erfolgreich eingerichtet!`);
                 initialisiereAppSession(lizenzInfo);
@@ -432,10 +455,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (ansichtAktivierung) {
             ansichtAktivierung.style.display = 'none';
+            ansichtAktivierung.classList.remove('aktiv');
             ansichtAktivierung.classList.add('ausblenden');
         }
 
-        // RESPEKTUIERE GEMERKTE ANSICHT ODER FALLBACK AUF STARTSEITE
+        if (fussNavigation) {
+            fussNavigation.style.display = 'flex';
+        }
+
         const gemerkteAnsicht = sessionStorage.getItem('kik_aktive_ansicht') || 'ansicht-startseite';
         const ansichten = document.querySelectorAll('.app-ansicht');
         
@@ -452,7 +479,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Passenden Navigations-Button als aktiv setzen
         const navSchaltflaechen = document.querySelectorAll('.nav-schaltflaeche');
         navSchaltflaechen.forEach(btn => {
             if (btn.getAttribute('data-ziel') === gemerkteAnsicht) {
@@ -468,9 +494,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         oberflaecheAnRolleAnpassen(lizenz.rolle);
 
+        // Daten erst JETZT nach erfolgreichem Login laden
+        if (typeof window.aktiveFilialArtikelLaden === 'function') {
+            window.aktiveFilialArtikelLaden();
+        }
+        if (typeof window.artikelLaden === 'function') {
+            window.artikelLaden();
+        }
+
         if (lizenz.rolle === 'Teamleitung') {
             teamleiterDashboardLaden(lizenz.filiale_id);
             teamleiterMitarbeiterLaden(lizenz.filiale_id);
+        }
+
+        if (lizenz.rolle === 'Bezirksleitung' && typeof blFilialenLaden === 'function') {
+            blFilialenLaden();
         }
 
         if (lizenz.rolle === 'Master-Admin' && viewSwitcher) {
@@ -494,11 +532,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const neuesThema = e.target.value;
             wendeThemaAn(neuesThema);
 
-            const gespeicherteLizenz = localStorage.getItem('kik_app_lizenz');
+            const gespeicherteLizenz = sessionStorage.getItem('kik_app_lizenz');
             if (gespeicherteLizenz) {
                 const lizenz = JSON.parse(gespeicherteLizenz);
                 lizenz.thema = neuesThema;
-                localStorage.setItem('kik_app_lizenz', JSON.stringify(lizenz));
+                sessionStorage.setItem('kik_app_lizenz', JSON.stringify(lizenz));
 
                 if (lizenz.id) {
                     try {
@@ -649,7 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         if (!error) {
                             alert('Mitarbeiter erfolgreich entfernt.');
-                            const lizenz = JSON.parse(localStorage.getItem('kik_app_lizenz'));
+                            const lizenz = JSON.parse(sessionStorage.getItem('kik_app_lizenz'));
                             teamleiterMitarbeiterLaden(lizenz.filiale_id);
                         } else {
                             alert('Fehler beim Löschen: ' + error.message);
@@ -667,7 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tlTeamTabBtn = document.getElementById('nav-btn-tl-team');
     if (tlTeamTabBtn) {
         tlTeamTabBtn.addEventListener('click', () => {
-            const gespeicherteLizenz = localStorage.getItem('kik_app_lizenz');
+            const gespeicherteLizenz = sessionStorage.getItem('kik_app_lizenz');
             if (gespeicherteLizenz) {
                 try {
                     const lizenz = JSON.parse(gespeicherteLizenz);
@@ -702,7 +740,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('Mitarbeiter erfolgreich aktualisiert!');
                 if (bearbeitenKarte) bearbeitenKarte.classList.add('ausblenden');
 
-                const lizenz = JSON.parse(localStorage.getItem('kik_app_lizenz'));
+                const lizenz = JSON.parse(sessionStorage.getItem('kik_app_lizenz'));
                 teamleiterMitarbeiterLaden(lizenz.filiale_id);
 
             } catch (err) {

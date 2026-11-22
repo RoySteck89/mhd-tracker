@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MITARBEITER-PROFIL & MONATS-STATISTIKEN (Übersichtlich & Modern)
+   MITARBEITER-PROFIL & MONATS-STATISTIKEN (SICHER MIT SESSION-STORAGE)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -10,15 +10,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function profilRendern() {
         profilBehaelter.innerHTML = '<div class="lade-text">Lade Profildaten...</div>';
 
-        // 1. Benutzerdaten aus localStorage abrufen
-        const gespeicherteLizenz = localStorage.getItem('kik_app_lizenz');
-        const benutzer = gespeicherteLizenz ? JSON.parse(gespeicherteLizenz) : (window.aktuellerBenutzer || {
-            name: 'Roy Steck',
-            rolle: 'Master-Admin',
-            filiale_id: 'Zentrale',
-            personalnummer: '---'
-        });
+        const gespeicherteLizenz = sessionStorage.getItem('kik_app_lizenz');
+        if (!gespeicherteLizenz) {
+            profilBehaelter.innerHTML = '<div class="lade-text">Bitte zuerst anmelden.</div>';
+            return;
+        }
 
+        const benutzer = JSON.parse(gespeicherteLizenz);
         const reinerName = (benutzer.name || 'Benutzer').replace(/\s*\([^)]*\)/g, '').trim();
 
         let statistiken = {
@@ -28,7 +26,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             monatName: new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
         };
 
-        // 2. Echtdaten aus Supabase abrufen, falls vorhanden
         if (window.supabaseVerbindung && window.supabaseVerbindung.client) {
             try {
                 const { data: eintraege, error } = await window.supabaseVerbindung.client
@@ -45,9 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // 3. Strukturierte, moderne HTML-Ausgabe mit Design-Klassen statt harten Farben
         profilBehaelter.innerHTML = `
-            <!-- Kopfkarte -->
             <div class="profil-kopfkarte">
                 <div class="profil-avatar-kreis">👤</div>
                 <div class="profil-name">${reinerName}</div>
@@ -55,7 +50,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div style="font-size: 0.8rem; opacity: 0.85; margin-top: 2px;">Persönliche Erfolgsbilanz – ${statistiken.monatName}</div>
             </div>
 
-            <!-- Statistik-Grid (2 Spalten) -->
             <div class="profil-stats-grid">
                 <div class="profil-stat-box">
                     <div class="profil-stat-wert">${statistiken.scansMonat}</div>
@@ -67,7 +61,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             </div>
 
-            <!-- Ablauftag-Pflege Box -->
             <div class="profil-stat-box" style="text-align: left;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                     <span style="font-size: 0.9rem; font-weight: 700;" class="profil-text-titel">Ablauftag-Pflege</span>
@@ -78,7 +71,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </p>
             </div>
 
-            <!-- Detaillierte Stammdaten als Karte -->
             <div class="profil-info-liste">
                 <div class="profil-info-zeile">
                     <span class="profil-info-label">Standort / Filiale</span>
@@ -100,7 +92,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             </div>
 
-            <!-- Profil-Aktionen (Schichtwechsel) -->
             <div class="profil-aktionen">
                 <button id="schaltflaeche-app-abmelden" class="btn-profil-gefahr">
                     🔒 Vom Gerät abmelden (Schichtwechsel)
@@ -108,14 +99,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
         `;
 
-        // Event-Listener für den Abmelden-Button
         const abmeldenBtn = document.getElementById('schaltflaeche-app-abmelden');
         if (abmeldenBtn) {
             abmeldenBtn.addEventListener('click', () => {
-                if (confirm('Möchtest du dich von diesem Gerät abmelden? Der nächste Mitarbeiter kann sich direkt per Personalnummer & PIN anmelden.')) {
-                    localStorage.removeItem('kik_app_lizenz');
-                    location.reload();
-                }
+                sessionStorage.removeItem('kik_app_lizenz');
+                sessionStorage.removeItem('kik_aktive_ansicht');
+                localStorage.removeItem('kik_app_lizenz');
+                location.reload();
             });
         }
     }

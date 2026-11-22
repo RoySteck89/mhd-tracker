@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SCANNER-, SPEICHER- & FILIAL-ARTIKEL-LOGIK (INKL. DUPLIKATS-PRÜFUNG)
+   SCANNER-, SPEICHER- & FILIAL-ARTIKEL-LOGIK (INKL. LOGIN-SCHUTZ & ZIELSCHLITZ)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -9,6 +9,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const scanButton = document.getElementById('schaltflaeche-scannen');
     const aktiveArtikelBehaelter = document.getElementById('behälter-aktive-artikel');
 
+    function istAngemeldet() {
+        const session = sessionStorage.getItem('kik_app_lizenz');
+        if (!session) return false;
+        try {
+            const daten = JSON.parse(session);
+            return Boolean(daten && daten.rolle);
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // Sicherstellen, dass kein Passwort-Manager auf dem Barcode-Feld aufpoppt
+    if (barcodeInput) {
+        barcodeInput.setAttribute('autocomplete', 'off');
+        barcodeInput.setAttribute('autocapitalize', 'off');
+        barcodeInput.setAttribute('spellcheck', 'false');
+        barcodeInput.setAttribute('data-lpignore', 'true');
+        barcodeInput.setAttribute('inputmode', 'numeric');
+    }
+
     // Heutiges Datum als Standard setzen
     if (mhdInput) {
         mhdInput.value = new Date().toISOString().split('T')[0];
@@ -17,6 +37,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Echten Kamera-Scanner öffnen
     if (scanButton) {
         scanButton.addEventListener('click', () => {
+            if (!istAngemeldet()) {
+                alert('Zugriff verweigert: Bitte zuerst anmelden.');
+                return;
+            }
             kameraScannerOeffnen();
         });
     }
@@ -31,12 +55,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const overlay = document.createElement('div');
-        overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;';
+        overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.92); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;';
         overlay.innerHTML = `
-            <div style="width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 12px; align-items: center;">
-                <div style="color: white; font-weight: 600; font-size: 1.1rem; margin-bottom: 8px;">Kamera auf Barcode richten</div>
-                <video id="scanner-video" autoplay playsinline style="width: 100%; max-height: 350px; border-radius: 12px; object-fit: cover; background: #000;"></video>
-                <button id="scanner-schliessen" class="schaltflaeche-primaer" style="background: #DC3545;">Abbrechen</button>
+            <div style="width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 16px; align-items: center;">
+                <div style="color: white; font-weight: 600; font-size: 1.05rem; text-align: center;">Barcode in den Zielschlitz halten</div>
+                
+                <!-- Kompakter, schmaler Zielschlitz -->
+                <div style="position: relative; width: 100%; height: 150px; border: 2px solid #0D9488; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 0 20px rgba(13, 148, 136, 0.4);">
+                    <video id="scanner-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                    <!-- Roter Laser-Zielstrich -->
+                    <div style="position: absolute; top: 50%; left: 8%; right: 8%; height: 2px; background-color: #EF4444; box-shadow: 0 0 8px #EF4444; transform: translateY(-50%); pointer-events: none; z-index: 10;"></div>
+                </div>
+
+                <div style="color: #94A3B8; font-size: 0.82rem; text-align: center;">Nur Strichcode anvisieren (Datum & Text darüber ausblenden)</div>
+                <button id="scanner-schliessen" class="schaltflaeche-primaer" style="background: #DC3545; width: 100%;">Abbrechen</button>
             </div>
         `;
         document.body.appendChild(overlay);
@@ -47,24 +79,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             mediaStream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment' }
+                video: { 
+                    facingMode: 'environment',
+                    advanced: [{ focusMode: 'continuous' }]
+                }
             });
             videoElement.srcObject = mediaStream;
 
             const barcodeDetector = new BarcodeDetector({
-                formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'itf', 'upc_a', 'upc_e', 'qr_code']
+                formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'itf', 'upc_a', 'upc_e']
             });
 
             scanIntervall = setInterval(async () => {
                 try {
                     const barcodes = await barcodeDetector.detect(videoElement);
                     if (barcodes.length > 0) {
-                        const erfassterCode = barcodes[0].rawValue;
-                        if (barcodeInput) barcodeInput.value = erfassterCode;
-                        scannerBeenden();
+                        const erfassterCode = barcodes[0].rawValue.trim();
+
+                        // SICHERHEITS-FILTER: Reine Ziffern, Länge zwischen 8 und 18 Stellen
+                        if (erfassterCode.length >= 8 && erfassterCode.length <= 18 && /^\d+$/.test(erfassterCode)) {
+                            if (barcodeInput) barcodeInput.value = erfassterCode;
+                            scannerBeenden();
+                        } else {
+                            console.warn('Fehl-Scan oder ungültige Länge ignoriert:', erfassterCode);
+                        }
                     }
                 } catch (err) {}
-            }, 300);
+            }, 250);
 
         } catch (err) {
             console.error('Kamera konnte nicht gestartet werden:', err);
@@ -83,7 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Professionelles, eigenes Modal statt des unschönen Browser-Prompts
     function zeigeEigenenPrompt(titel, nachricht, callback) {
         const altesOverlay = document.getElementById('custom-modal-overlay');
         if (altesOverlay) altesOverlay.remove();
@@ -96,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div style="background: #ffffff; width: 100%; max-width: 380px; padding: 24px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 14px;">
                 <div style="font-weight: 700; font-size: 1.15rem; color: #003366;">${titel}</div>
                 <div style="font-size: 0.95rem; color: #495057; line-height: 1.4;">${nachricht}</div>
-                <input type="text" id="custom-modal-input" placeholder="Artikelbezeichnung eingeben..." style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 1rem; box-sizing: border-box; outline: none; background: #f8f9fa;">
+                <input type="text" id="custom-modal-input" placeholder="Artikelbezeichnung eingeben..." autocomplete="off" style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 1rem; box-sizing: border-box; outline: none; background: #f8f9fa;">
                 <div style="display: flex; gap: 10px; margin-top: 6px;">
                     <button id="custom-modal-abbrechen" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">Abbrechen</button>
                     <button id="custom-modal-ok" style="flex: 1; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">Speichern</button>
@@ -126,9 +166,13 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // MHD-Eintrag speichern
     if (speichernButton) {
         speichernButton.addEventListener('click', async () => {
+            if (!istAngemeldet()) {
+                alert('Zugriff verweigert: Bitte zuerst anmelden.');
+                return;
+            }
+
             const barcode = barcodeInput ? barcodeInput.value.trim() : '';
             const mhdDatum = mhdInput ? mhdInput.value : '';
 
@@ -147,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function datenInSupabaseSpeichern(barcode, mhdDatum) {
+        if (!istAngemeldet()) return;
         if (!window.supabaseVerbindung || !window.supabaseVerbindung.client) {
             alert('Datenbankverbindung nicht bereit.');
             return;
@@ -168,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     "Neuer Artikel erkannt",
                     `Der Barcode <code style="font-family: monospace; background: #e9ecef; padding: 2px 4px; border-radius: 4px;">${barcode}</code> ist neu im System. Bitte gib eine Artikelbezeichnung ein:`,
                     async (artikelName) => {
-                        if (!artikelName) return;
+                        if (!artikelName || !istAngemeldet()) return;
 
                         const { data: neuerArtikel, error: insertFehler } = await window.supabaseVerbindung.client
                             .from('artikel')
@@ -188,11 +233,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function eintragInSupabaseSpeichern(artikelId, barcode, mhdDatum) {
+        if (!istAngemeldet()) return;
         try {
-            const lizenz = JSON.parse(localStorage.getItem('kik_app_lizenz')) || {};
+            const lizenz = JSON.parse(sessionStorage.getItem('kik_app_lizenz'));
             const filialeId = lizenz.filiale_id || 'Zentrale';
 
-            // Prüfung auf exaktes Duplikat (gleicher Barcode + gleiches MHD in derselben Filiale)
             const { data: doppelteEintraege, error: pruefFehler } = await window.supabaseVerbindung.client
                 .from('mhd_eintraege')
                 .select('*')
@@ -210,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 alert(`Artikel mit MHD ${deutschesDatum} ist bereits eingetragen.`);
-                return; // Speichern abbrechen
+                return;
             }
 
             const { error: mhdFehler } = await window.supabaseVerbindung.client
@@ -235,9 +280,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Aktive Filial-Artikel laden (Genau 1 Monat Vorlauf & deutsches Datumsformat)
     async function aktiveFilialArtikelLaden() {
-        if (!aktiveArtikelBehaelter || !window.supabaseVerbindung) return;
+        if (!aktiveArtikelBehaelter) return;
+
+        // SICHERHEITSSPERRE: Ohne Login keine Datenbankabfrage!
+        if (!istAngemeldet()) {
+            aktiveArtikelBehaelter.innerHTML = '';
+            return;
+        }
+
+        if (!window.supabaseVerbindung) return;
 
         aktiveArtikelBehaelter.innerHTML = '<div style="padding: 12px; text-align: center; color: #6C757D;">Lade anstehende Filial-Artikel...</div>';
 
@@ -307,6 +359,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.querySelectorAll('.btn-status-setzen').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
+                    if (!istAngemeldet()) {
+                        alert('Zugriff verweigert: Bitte zuerst anmelden.');
+                        return;
+                    }
                     const id = e.target.getAttribute('data-id');
                     const neuerStatus = e.target.getAttribute('data-status');
 
@@ -329,6 +385,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    aktiveFilialArtikelLaden();
-    console.log('Scanner- & Mitarbeiter-Dashboard-Logik erfolgreich geladen.');
+    window.aktiveFilialArtikelLaden = aktiveFilialArtikelLaden;
+
+    if (istAngemeldet()) {
+        aktiveFilialArtikelLaden();
+    }
 });

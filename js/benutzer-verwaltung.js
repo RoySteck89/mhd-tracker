@@ -1,9 +1,8 @@
 /* ==========================================================================
-   BENUTZER-VERWALTUNG & ROLLENSYSTEM
+   BENUTZER-VERWALTUNG & ROLLENSYSTEM (SICHER OHNE ADMIN-FALLBACK)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Definierte Benutzerrollen im System
     const Rollen = {
         MASTER_ADMIN: 'Master-Admin',
         BEZIRKSLEITUNG: 'Bezirksleitung',
@@ -11,46 +10,29 @@ document.addEventListener('DOMContentLoaded', () => {
         MITARBEITER: 'Mitarbeiter'
     };
 
-    // Standardmäßig angemeldeter Benutzer (Beispiel-Zustand vor Supabase-Login)
-    let aktuellerBenutzer = {
-        name: 'Roy Steck',
-        rolle: Rollen.MASTER_ADMIN,
-        filialeId: 'FIL-1042'
-    };
+    // Kein harter Master-Admin-Fallback mehr! Standard ist null (nicht angemeldet).
+    const gespeicherteSession = sessionStorage.getItem('kik_app_lizenz');
+    let aktuellerBenutzer = gespeicherteSession ? JSON.parse(gespeicherteSession) : null;
 
-    // DOM-Elemente für Benutzer-Anzeige
     const benutzerNameAnzeige = document.getElementById('benutzer-name');
 
-    // Benutzer-Informationen in der Kopfzeile aktualisieren
     function benutzerOberflaecheAktualisieren() {
         if (benutzerNameAnzeige) {
-            benutzerNameAnzeige.textContent = `${aktuellerBenutzer.name} (${aktuellerBenutzer.rolle})`;
+            if (aktuellerBenutzer) {
+                benutzerNameAnzeige.textContent = `${aktuellerBenutzer.name} (${aktuellerBenutzer.rolle})`;
+            } else {
+                benutzerNameAnzeige.textContent = 'Nicht angemeldet';
+            }
         }
     }
 
-    // Master-Admin View-Switcher (Ermöglicht das Testen anderer Rollen-Ansichten)
-    function rolleWechseln(neueRolle) {
-        if (aktuellerBenutzer.rolle !== Rollen.MASTER_ADMIN && neueRolle !== aktuellerBenutzer.rolle) {
-            console.warn('Rollenwechsel nur für Master-Admin gestattet.');
-            return;
-        }
-
-        console.log(`Rolle temporär gewechselt auf: ${neueRolle}`);
-        aktuellerBenutzer.aktiveSimulierteRolle = neueRolle;
-        benutzerOberflaecheAktualisieren();
-    }
-
-    // Globale Berechtigungsprüfung
     window.hatBerechtigung = function(erforderlicheRolle) {
-        // Master-Admin darf grundsätzlich alles
-        if (aktuellerBenutzer.rolle === Rollen.MASTER_ADMIN) return true;
-        return aktuellerBenutzer.rolle === erforderlicheRolle;
+        const aktiv = window.aktuellerBenutzer || aktuellerBenutzer;
+        if (!aktiv) return false;
+        if (aktiv.rolle === Rollen.MASTER_ADMIN) return true;
+        return aktiv.rolle === erforderlicheRolle;
     };
 
-    // Aktuellen Benutzer für andere Skripte global bereitstellen
     window.aktuellerBenutzer = aktuellerBenutzer;
-
-    // Initialisierung
     benutzerOberflaecheAktualisieren();
-    console.log('Benutzer-Verwaltung erfolgreich geladen.');
 });

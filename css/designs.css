@@ -1,5 +1,5 @@
 /* ==========================================================================
-   MHD SCANNER-APP — MODERNES TÜRKIS / TEAL DESIGN (FEHLERFREI)
+   MHD SCANNER-APP — MODERNES TÜRKIS / TEAL DESIGN (FEHLERFREI & SICHER)
    ========================================================================== */
 
 * {
@@ -143,13 +143,13 @@ body {
 
 /* --- ANSICHTEN & KARTEN --- */
 .app-ansicht {
-    display: none !important;
+    display: none;
     flex-direction: column;
     gap: 16px;
     width: 100%;
 }
 .app-ansicht.aktiv {
-    display: flex !important;
+    display: flex;
     flex-direction: column;
     width: 100%;
 }
