@@ -31,8 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnMaSpeichern = document.getElementById('schaltflaeche-ma-speichern');
     const btnMaAbbrechen = document.getElementById('schaltflaeche-ma-abbrechen');
 
-    const auswahlFarbThema = document.getElementById('auswahl-farb-thema');
-
     let temporaererLizenzSpeicher = null;
 
     function wendeThemaAn(themaName) {
@@ -490,11 +488,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const aktuellesThema = lizenz.thema || 'kik';
         wendeThemaAn(aktuellesThema);
-        if (auswahlFarbThema) auswahlFarbThema.value = aktuellesThema;
 
         oberflaecheAnRolleAnpassen(lizenz.rolle);
 
-        // Daten erst JETZT nach erfolgreichem Login laden
         if (typeof window.aktiveFilialArtikelLaden === 'function') {
             window.aktiveFilialArtikelLaden();
         }
@@ -525,31 +521,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         }
-    }
-
-    if (auswahlFarbThema) {
-        auswahlFarbThema.addEventListener('change', async (e) => {
-            const neuesThema = e.target.value;
-            wendeThemaAn(neuesThema);
-
-            const gespeicherteLizenz = sessionStorage.getItem('kik_app_lizenz');
-            if (gespeicherteLizenz) {
-                const lizenz = JSON.parse(gespeicherteLizenz);
-                lizenz.thema = neuesThema;
-                sessionStorage.setItem('kik_app_lizenz', JSON.stringify(lizenz));
-
-                if (lizenz.id) {
-                    try {
-                        await window.supabaseVerbindung.client
-                            .from('lizenz_schluessel')
-                            .update({ thema: neuesThema })
-                            .eq('id', lizenz.id);
-                    } catch (err) {
-                        console.error('Fehler beim Speichern des Themes:', err);
-                    }
-                }
-            }
-        });
     }
 
     async function teamleiterDashboardLaden(filialId) {
@@ -819,6 +790,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tlTeamTabBtn) { tlTeamTabBtn.style.display = 'flex'; tlTeamTabBtn.classList.remove('ausblenden'); }
         } else {
             if (scannerBereich) { scannerBereich.style.display = 'block'; scannerBereich.classList.remove('ausblenden'); }
+        }
+
+        // UNTERE NAVIGATION IMMER SICHER EINBLENDEN, WENN ANGEMELDET
+        if (fussNavigation) {
+            fussNavigation.style.display = 'flex';
         }
     }
 
