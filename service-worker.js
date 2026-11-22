@@ -1,18 +1,18 @@
-const CACHE_NAME = 'mhd-scanner-v1';
+const CACHE_NAME = 'mhd-scanner-v2';
 const ASSETS_TO_CACHE = [
-  '../index.html',
-  '../css/basis-layout.css',
-  '../css/standard-design.css',
-  '../css/kik-thema.css',
-  '../js/datenbank-verbindung.js',
-  '../js/benutzer-verwaltung.js',
-  '../js/scanner-logik.js',
-  '../js/artikel-suche.js',
-  '../js/mitarbeiter-profil.js',
-  '../js/app-steuerung.js',
-  '../js/auth.js',
-  '../js/admin-dashboard.js',
-  '../js/bezirksleitung-dashboard.js'
+  './index.html',
+  './css/designs.css',
+  './js/datenbank-verbindung.js',
+  './js/benutzer-verwaltung.js',
+  './js/scanner-logik.js',
+  './js/artikel-suche.js',
+  './js/mitarbeiter-profil.js',
+  './js/app-steuerung.js',
+  './js/auth.js',
+  './js/admin-dashboard.js',
+  './js/bezirksleitung-dashboard.js',
+  './js/globale-modals.js',
+  './js/pull-to-refresh.js'
 ];
 
 // Installation & Caching
@@ -25,7 +25,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Aktivierung
+// Aktivierung (Alten Cache aufräumen)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keyList) => {
