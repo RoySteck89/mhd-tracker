@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PULL-TO-REFRESH LOGIK (LÄDT NUR DIE DATEN NEU, OHNE DIE SEITE ZU RESETTEN)
+   PULL-TO-REFRESH LOGIK (STABIL & SICHER FÜR ALLE TABS & NAVIGATION)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -58,16 +58,36 @@ document.addEventListener('DOMContentLoaded', () => {
         
         ladeIndikator.style.transform = 'translateY(0)';
         
-        // Aktive Ansicht ermitteln und gezielt aktualisieren (Kein harter Reload!)
+        // 1. Unternavigation IMMER sichtbar halten, wenn eingeloggt
+        const fussNav = document.getElementById('fuss-navigation');
+        if (fussNav && sessionStorage.getItem('kik_app_lizenz')) {
+            fussNav.style.display = 'flex';
+        }
+
+        // 2. Aktive Ansicht anhand des Storage oder des DOM ermitteln und Daten frisch laden
         const aktiveAnsicht = document.querySelector('.app-ansicht:not(.ausblenden)');
         
         if (aktiveAnsicht) {
-            if (aktiveAnsicht.id === 'ansicht-suche' && typeof window.artikelLaden === 'function') {
+            const ansichtId = aktiveAnsicht.id;
+            
+            if (ansichtId === 'ansicht-suche' && typeof window.artikelLaden === 'function') {
                 window.artikelLaden();
-            } else if (aktiveAnsicht.id === 'ansicht-startseite' && typeof window.aktiveFilialArtikelLaden === 'function') {
+            } else if (ansichtId === 'ansicht-startseite' && typeof window.aktiveFilialArtikelLaden === 'function') {
                 window.aktiveFilialArtikelLaden();
-            } else {
-                console.log('Datenbereich aktualisiert.');
+            } else if (ansichtId === 'ansicht-profil') {
+                // Profil-Tab Refresh triggern falls gewünscht
+                const profilTabBtn = document.querySelector('[data-ziel="ansicht-profil"]');
+                if (profilTabBtn) profilTabBtn.click();
+            } else if (ansichtId === 'ansicht-tl-mitarbeiter') {
+                const gespeicherteLizenz = sessionStorage.getItem('kik_app_lizenz');
+                if (gespeicherteLizenz) {
+                    try {
+                        const lizenz = JSON.parse(gespeicherteLizenz);
+                        if (typeof teamleiterMitarbeiterLaden === 'function' && lizenz.filiale_id) {
+                            teamleiterMitarbeiterLaden(lizenz.filiale_id);
+                        }
+                    } catch (e) {}
+                }
             }
         }
 
