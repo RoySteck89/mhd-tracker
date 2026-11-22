@@ -1,14 +1,16 @@
 /* ==========================================================================
-   MINIMALISTISCHE ARTIKELLISTE & LIVE-SUCHE (MIT STRENGEM LOGIN-SCHUTZ)
+   MINIMALISTISCHE ARTIKELLISTE, KATEGORIE-FILTER, LIVE-SUCHE, TL-KATEGORIE & MHD-LÖSCHUNG
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
     const suchEingabe = document.getElementById('eingabe-artikel-suche');
     const ergebnisBehaelter = document.getElementById('behälter-such-ergebnisse');
+    const filterButtons = document.querySelectorAll('.artikel-filter-btn');
 
     if (!suchEingabe || !ergebnisBehaelter) return;
 
     let alleArtikel = [];
+    let aktuellerFilter = 'alle';
 
     function istAngemeldet() {
         const session = sessionStorage.getItem('kik_app_lizenz');
@@ -16,6 +18,18 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const daten = JSON.parse(session);
             return Boolean(daten && daten.rolle);
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function istTeamleitungOderAdmin() {
+        const session = sessionStorage.getItem('kik_app_lizenz');
+        if (!session) return false;
+        try {
+            const daten = JSON.parse(session);
+            const rolle = window.aktiveSimulierteRolle || daten.rolle;
+            return rolle === 'Teamleitung' || rolle === 'Master-Admin';
         } catch (e) {
             return false;
         }
@@ -37,8 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="font-weight: 700; font-size: 1.15rem; color: #003366;">${titel}</div>
                 <div style="font-size: 0.95rem; color: #495057; line-height: 1.4;">${nachricht}</div>
                 <div style="display: flex; gap: 10px; margin-top: 6px;">
-                    <button id="custom-modal-abbrechen" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">Abbrechen</button>
-                    <button id="custom-modal-ok" style="flex: 1; padding: 12px; background: ${buttonFarbe}; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">${buttonText}</button>
+                    <button id="custom-modal-abbrechen" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Abbrechen</button>
+                    <button id="custom-modal-ok" style="flex: 1; padding: 12px; background: ${buttonFarbe}; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">${buttonText}</button>
                 </div>
             </div>
         `;
@@ -66,10 +80,10 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.innerHTML = `
             <div style="background: #ffffff; width: 100%; max-width: 380px; padding: 24px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 14px;">
                 <div style="font-weight: 700; font-size: 1.15rem; color: #003366;">${titel}</div>
-                <input type="text" id="custom-modal-input" value="${vorabText}" style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 1rem; box-sizing: border-box; outline: none; background: #f8f9fa;">
+                <input type="text" id="custom-modal-input" value="${vorabText}" style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 1rem; outline: none; background: #f8f9fa;">
                 <div style="display: flex; gap: 10px; margin-top: 6px;">
-                    <button id="custom-modal-abbrechen" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">Abbrechen</button>
-                    <button id="custom-modal-ok" style="flex: 1; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.95rem;">Speichern</button>
+                    <button id="custom-modal-abbrechen" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Abbrechen</button>
+                    <button id="custom-modal-ok" style="flex: 1; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Speichern</button>
                 </div>
             </div>
         `;
@@ -91,22 +105,14 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         input.onkeydown = (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('custom-modal-ok').click();
-            }
+            if (e.key === 'Enter') document.getElementById('custom-modal-ok').click();
         };
     }
 
-    // Artikel aus der Supabase-Datenbank laden (NUR wenn angemeldet!)
     async function artikelLaden() {
-        if (!istAngemeldet()) {
+        if (!istAngemeldet() || !window.supabaseVerbindung) {
             alleArtikel = [];
             ergebnisBehaelter.innerHTML = '';
-            return;
-        }
-
-        if (!window.supabaseVerbindung) {
-            console.error('Datenbank-Verbindung nicht verfügbar.');
             return;
         }
 
@@ -118,54 +124,75 @@ document.addEventListener('DOMContentLoaded', () => {
             a.artikelname.localeCompare(b.artikelname, 'de', { sensitivity: 'base' })
         ) : [];
         
-        listeAnzeigen(alleArtikel);
+        filterUndSucheAnwenden();
     }
 
     window.artikelLaden = artikelLaden;
 
-    function listeAnzeigen(artikelListe, suchBegriff = '') {
-        if (!istAngemeldet()) {
-            ergebnisBehaelter.innerHTML = '';
-            return;
-        }
+    function filterUndSucheAnwenden() {
+        if (!istAngemeldet()) return;
 
+        const suchBegriff = suchEingabe.value.trim().toLowerCase();
+
+        let gefiltert = alleArtikel.filter(artikel => {
+            const entsprichtKategorie = (aktuellerFilter === 'alle' || artikel.kategorie === aktuellerFilter);
+            const entsprichtSuche = (suchBegriff === '' || artikel.artikelname.toLowerCase().includes(suchBegriff));
+            return entsprichtKategorie && entsprichtSuche;
+        });
+
+        listeAnzeigen(gefiltert);
+    }
+
+    function listeAnzeigen(artikelListe) {
         ergebnisBehaelter.innerHTML = '';
 
         const zählerDiv = document.createElement('div');
         zählerDiv.style.cssText = 'font-size: 0.8rem; color: #6C757D; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;';
-        zählerDiv.textContent = `${artikelListe.length} Artikel gefunden`;
+        zählerDiv.textContent = `${artikelListe.length} Artikel gefunden (${aktuellerFilter === 'alle' ? 'Alle Kategorien' : aktuellerFilter})`;
         ergebnisBehaelter.appendChild(zählerDiv);
 
         if (artikelListe.length === 0) {
             ergebnisBehaelter.innerHTML += `
                 <div class="fallback-meldung" style="padding: 20px; text-align: center; background: #FFF3CD; border: 1px solid #FFEEBA; border-radius: 8px; color: #856404; margin-top: 8px;">
-                    <p style="font-weight: 600; margin-bottom: 10px;">Artikel nicht gefunden („${suchBegriff}“).</p>
-                    <p style="font-size: 0.9rem; margin-bottom: 15px;">Möchtest du ihn jetzt scannen und neu anlegen?</p>
-                    <button id="schaltflaeche-jetzt-scannen" class="schaltflaeche-primaer" style="background-color: #28A745; min-height: 48px; font-size: 0.95rem;">
-                        📷 Jetzt scannen
-                    </button>
+                    <p style="font-weight: 600; margin-bottom: 10px;">Keine Artikel in dieser Auswahl gefunden.</p>
                 </div>
             `;
-
-            const scanBtn = document.getElementById('schaltflaeche-jetzt-scannen');
-            if (scanBtn) {
-                scanBtn.addEventListener('click', () => {
-                    direktZumScannerWechseln(suchBegriff);
-                });
-            }
             return;
         }
+
+        const istTL = istTeamleitungOderAdmin();
 
         artikelListe.forEach(artikel => {
             const element = document.createElement('div');
             element.className = 'artikel-karte-wrapper';
             element.style.cssText = 'background: #FFFFFF; border: 1px solid #E9ECEF; border-radius: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); overflow: hidden;';
             
+            let kategorieBadgeFarbe = '#E2E8F0';
+            let kategorieTextFarbe = '#334155';
+            if (artikel.kategorie === 'Süßigkeiten') { kategorieBadgeFarbe = '#FCE7F3'; kategorieTextFarbe = '#9D174D'; }
+            else if (artikel.kategorie === 'Getränke') { kategorieBadgeFarbe = '#E0F2FE'; kategorieTextFarbe = '#0369A1'; }
+            else if (artikel.kategorie === 'Tierfutter') { kategorieBadgeFarbe = '#FEF3C7'; kategorieTextFarbe = '#92400E'; }
+
+            let kategorieAnzeigeHtml = `<span style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: ${kategorieBadgeFarbe}; color: ${kategorieTextFarbe}; font-weight: 600;">${artikel.kategorie || 'Süßigkeiten'}</span>`;
+            
+            if (istTL) {
+                kategorieAnzeigeHtml = `
+                    <select class="tl-kategorie-dropdown" data-id="${artikel.id}" style="font-size: 0.75rem; padding: 2px 4px; border-radius: 4px; background: ${kategorieBadgeFarbe}; color: ${kategorieTextFarbe}; font-weight: 600; border: 1px solid #CBD5E1; cursor: pointer;" onclick="event.stopPropagation()">
+                        <option value="Süßigkeiten" ${artikel.kategorie === 'Süßigkeiten' ? 'selected' : ''}>🍫 Süßigkeiten</option>
+                        <option value="Getränke" ${artikel.kategorie === 'Getränke' ? 'selected' : ''}>🥤 Getränke</option>
+                        <option value="Tierfutter" ${artikel.kategorie === 'Tierfutter' ? 'selected' : ''}>🐾 Tierfutter</option>
+                    </select>
+                `;
+            }
+
             element.innerHTML = `
                 <div class="artikel-kopf" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer; user-select: none;">
                     <div style="display: flex; align-items: center; gap: 8px; flex: 1; padding-right: 10px;">
                         <span class="aufklapp-pfeil" style="font-size: 0.8rem; color: #6C757D; transition: transform 0.2s;">▶</span>
-                        <span style="word-break: break-word; font-size: 1rem; font-weight: 500; color: #212529;">${artikel.artikelname}</span>
+                        <div>
+                            <span style="word-break: break-word; font-size: 1rem; font-weight: 500; color: #212529;">${artikel.artikelname}</span>
+                            <div style="margin-top: 4px;">${kategorieAnzeigeHtml}</div>
+                        </div>
                     </div>
                     <div style="display: flex; gap: 6px; flex-shrink: 0;" onclick="event.stopPropagation()">
                         <button class="btn-artikel-bearbeiten" data-id="${artikel.id}" data-name="${artikel.artikelname}" style="background: #E9ECEF; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;" title="Artikel bearbeiten">✏️</button>
@@ -183,6 +210,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const detailsBereich = element.querySelector('.artikel-mhd-details');
             const pfeilSpan = element.querySelector('.aufklapp-pfeil');
             const mhdInhaltContainer = element.querySelector('.mhd-liste-inhalt');
+
+            if (istTL) {
+                const selectDropdown = element.querySelector('.tl-kategorie-dropdown');
+                if (selectDropdown) {
+                    selectDropdown.addEventListener('change', async (e) => {
+                        const neueKategorie = e.target.value;
+                        const artikelId = e.target.getAttribute('data-id');
+
+                        try {
+                            const { error } = await window.supabaseVerbindung.client
+                                .from('artikel')
+                                .update({ kategorie: neueKategorie })
+                                .eq('id', artikelId);
+
+                            if (error) throw error;
+
+                            const gefundenerArtikel = alleArtikel.find(a => a.id === artikelId);
+                            if (gefundenerArtikel) gefundenerArtikel.kategorie = neueKategorie;
+
+                            filterUndSucheAnwenden();
+                        } catch (err) {
+                            alert('Fehler beim Ändern der Kategorie: ' + err.message);
+                        }
+                    });
+                }
+            }
 
             let mhdBereitsGeladen = false;
 
@@ -217,9 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     let deutschesDatum = eintrag.mhd_datum;
                                     if (eintrag.mhd_datum && eintrag.mhd_datum.includes('-')) {
                                         const teile = eintrag.mhd_datum.split('-');
-                                        if (teile.length === 3) {
-                                            deutschesDatum = `${teile[2]}.${teile[1]}.${teile[0]}`;
-                                        }
+                                        if (teile.length === 3) deutschesDatum = `${teile[2]}.${teile[1]}.${teile[0]}`;
                                     }
 
                                     let badgeHintergrund = '#E2E8F0';
@@ -233,18 +284,53 @@ document.addEventListener('DOMContentLoaded', () => {
                                     eintragDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: #FFFFFF; padding: 8px 12px; border-radius: 6px; border: 1px solid #E2E8F0; font-size: 0.85rem;';
                                     
                                     eintragDiv.innerHTML = `
-                                        <div>
-                                            <span>MHD: <strong>${deutschesDatum}</strong></span>
+                                        <div><span>MHD: <strong>${deutschesDatum}</strong></span></div>
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; background: ${badgeHintergrund}; color: ${badgeTextFarbe}; text-transform: uppercase;">${eintrag.status}</span>
+                                            <button class="btn-mhd-loeschen" data-id="${eintrag.id}" style="background: #F8D7DA; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;" title="Dieses MHD löschen">🗑️</button>
                                         </div>
-                                        <span style="padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; background: ${badgeHintergrund}; color: ${badgeTextFarbe}; text-transform: uppercase;">${eintrag.status}</span>
                                     `;
                                     ul.appendChild(eintragDiv);
                                 });
                                 mhdInhaltContainer.appendChild(ul);
+
+                                // Event-Listener für das Löschen einzelner MHDs
+                                mhdInhaltContainer.querySelectorAll('.btn-mhd-loeschen').forEach(loeschBtn => {
+                                    loeschBtn.addEventListener('click', async (evt) => {
+                                        evt.stopPropagation();
+                                        const mhdId = loeschBtn.getAttribute('data-id');
+
+                                        zeigeEigenesBestätigungsModal(
+                                            "MHD-Eintrag löschen",
+                                            "Soll dieser spezifische MHD-Eintrag wirklich gelöscht werden?",
+                                            true,
+                                            async (bestätigt) => {
+                                                if (!bestätigt) return;
+                                                try {
+                                                    const { error: loeschFehler } = await window.supabaseVerbindung.client
+                                                        .from('mhd_eintraege')
+                                                        .delete()
+                                                        .eq('id', mhdId);
+
+                                                    if (loeschFehler) throw loeschFehler;
+
+                                                    // Zeile direkt aus dem DOM entfernen oder Ansicht zuklappen
+                                                    loeschBtn.closest('div').parentElement.remove();
+                                                    
+                                                    // Falls vorhanden, auch die aktive Liste im Scanner aktualisieren
+                                                    if (typeof window.aktiveFilialArtikelLaden === 'function') {
+                                                        window.aktiveFilialArtikelLaden();
+                                                    }
+                                                } catch (err) {
+                                                    alert('Fehler beim Löschen des MHDs: ' + err.message);
+                                                }
+                                            }
+                                        );
+                                    });
+                                });
                             }
                             mhdBereitsGeladen = true;
                         } catch (err) {
-                            console.error('Fehler beim Laden der MHDs:', err);
                             mhdInhaltContainer.innerHTML = '<div style="color: #DC3545;">Fehler beim Laden der MHD-Einträge.</div>';
                         }
                     }
@@ -257,10 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.querySelectorAll('.btn-artikel-bearbeiten').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                if (!istAngemeldet()) {
-                    alert('Zugriff verweigert: Bitte zuerst anmelden.');
-                    return;
-                }
+                if (!istAngemeldet()) return;
                 const id = e.target.getAttribute('data-id');
                 const alterName = e.target.getAttribute('data-name');
                 
@@ -283,10 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.querySelectorAll('.btn-artikel-loeschen').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                if (!istAngemeldet()) {
-                    alert('Zugriff verweigert: Bitte zuerst anmelden.');
-                    return;
-                }
+                if (!istAngemeldet()) return;
                 const id = e.target.getAttribute('data-id');
                 const artikelName = e.target.getAttribute('data-name');
                 
@@ -305,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (error) throw error;
                             artikelLaden();
                         } catch (err) {
-                            alert('Fehler beim Löschen (möglicherweise noch verknüpfte MHD-Einträge vorhanden): ' + err.message);
+                            alert('Fehler beim Löschen: ' + err.message);
                         }
                     }
                 );
@@ -313,26 +393,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    suchEingabe.addEventListener('input', (e) => {
-        if (!istAngemeldet()) return;
-        const eingabeWert = e.target.value.trim().toLowerCase();
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterButtons.forEach(b => {
+                b.style.background = '#FFF';
+                b.style.color = '#0F172A';
+                b.style.borderColor = '#CBD5E1';
+                b.classList.remove('aktiv');
+            });
 
-        if (eingabeWert === '') {
-            listeAnzeigen(alleArtikel);
-            return;
-        }
+            btn.style.background = '#0D9488';
+            btn.style.color = '#FFF';
+            btn.style.borderColor = '#0D9488';
+            btn.classList.add('aktiv');
 
-        const gefiltert = alleArtikel.filter(artikel => 
-            artikel.artikelname.toLowerCase().includes(eingabeWert)
-        );
-
-        listeAnzeigen(gefiltert, e.target.value.trim());
+            aktuellerFilter = btn.getAttribute('data-kategorie');
+            filterUndSucheAnwenden();
+        });
     });
 
-    function direktZumScannerWechseln(unbekannterName) {
-        const startTab = document.querySelector('[data-ziel="ansicht-startseite"]');
-        if (startTab) startTab.click();
-    }
+    suchEingabe.addEventListener('input', () => {
+        if (!istAngemeldet()) return;
+        filterUndSucheAnwenden();
+    });
 
     if (istAngemeldet()) {
         artikelLaden();

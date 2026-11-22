@@ -65,6 +65,16 @@
                             <input type="date" id="eingabe-mhd">
                         </div>
 
+                        <!-- NEU: Kategorie-Auswahl bei der Erfassung -->
+                        <div class="formular-gruppe">
+                            <label for="eingabe-kategorie">Warengruppe / Kategorie</label>
+                            <select id="eingabe-kategorie">
+                                <option value="Süßigkeiten">🍫 Süßigkeiten</option>
+                                <option value="Getränke">🥤 Getränke</option>
+                                <option value="Tierfutter">🐾 Tierfutter</option>
+                            </select>
+                        </div>
+
                         <button id="schaltflaeche-mhd-speichern" class="schaltflaeche-primaer">
                             💾 MHD Speichern
                         </button>
@@ -144,9 +154,16 @@
 
             </section>
 
-            <!-- ANSICHT 2: Minimalistische Artikelliste & Live-Suche -->
+            <!-- ANSICHT 2: Minimalistische Artikelliste & Live-Suche (Inkl. Filter-Tabs) -->
             <section id="ansicht-suche" class="app-ansicht ausblenden">
-                <div class="such-bereich">
+                <div class="such-bereich" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Filter-Tabs für die 3 Kategorien -->
+                    <div class="admin-subtab-leiste" style="display: flex; gap: 6px;">
+                        <button class="artikel-filter-btn aktiv" data-kategorie="alle" style="flex: 1; padding: 10px; font-size: 0.85rem; border-radius: 8px; border: 1px solid #0D9488; background: #0D9488; color: #FFF; font-weight: 600; cursor: pointer;">Alle</button>
+                        <button class="artikel-filter-btn" data-kategorie="Süßigkeiten" style="flex: 1; padding: 10px; font-size: 0.85rem; border-radius: 8px; border: 1px solid #CBD5E1; background: #FFF; color: #0F172A; font-weight: 600; cursor: pointer;">🍫 Süßigkeiten</button>
+                        <button class="artikel-filter-btn" data-kategorie="Getränke" style="flex: 1; padding: 10px; font-size: 0.85rem; border-radius: 8px; border: 1px solid #CBD5E1; background: #FFF; color: #0F172A; font-weight: 600; cursor: pointer;">🥤 Getränke</button>
+                        <button class="artikel-filter-btn" data-kategorie="Tierfutter" style="flex: 1; padding: 10px; font-size: 0.85rem; border-radius: 8px; border: 1px solid #CBD5E1; background: #FFF; color: #0F172A; font-weight: 600; cursor: pointer;">🐾 Tierfutter</button>
+                    </div>
                     <input type="text" id="eingabe-artikel-suche" placeholder="Artikelnamen eingeben..." autocomplete="off">
                 </div>
                 <div class="bereichs-titel">Registrierte Artikel</div>
