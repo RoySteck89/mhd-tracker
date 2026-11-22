@@ -392,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (pin.length !== 4)  {
-                alert('Der Kassen-PIN muss genau 4-stellig sein.');
+                alert('Die PIN muss genau 4-stellig sein.');
                 return;
             }
 

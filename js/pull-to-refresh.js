@@ -1,5 +1,5 @@
 /* ==========================================================================
-   PULL-TO-REFRESH LOGIK (LÄDT NUR DIE DATEN NEU, STATT DIE GANZE SEITE ZU RESETTEN)
+   PULL-TO-REFRESH LOGIK (LÄDT NUR DIE DATEN NEU, OHNE DIE SEITE ZU RESETTEN)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let istAmAnfang = false;
     const ladeIndikatorHöhe = 60;
 
-    // Lade-Indikator oben erstellen
     const ladeIndikator = document.createElement('div');
     ladeIndikator.id = 'pull-to-refresh-indicator';
     ladeIndikator.style.cssText = `
@@ -48,43 +47,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const diffY = currentY - touchStartY;
         const diffX = Math.abs(currentX - touchStartX);
 
-        // Erst ab einer echten vertikalen Abwärtsbewegung anzeigen
         if (diffY > 50 && diffY > diffX * 1.5 && window.scrollY <= 0) {
             const offset = Math.min(diffY / 2.5, ladeIndikatorHöhe);
             ladeIndikator.style.transform = `translateY(${offset}px)`;
         }
     }, { passive: true });
 
-    window.addEventListener('touchend', (e) => {
+    window.addEventListener('touchend', () => {
         if (!istAmAnfang) return;
-        const touchEndY = e.changedTouches[0].clientY;
-        const diffY = touchEndY - touchStartY;
-
-        // Hoher Schwellenwert (160px), damit es beim normalen Scrollen nicht auslöst
-        if (diffY > 160 && window.scrollY <= 0) {
-            ladeIndikator.style.transform = `translateY(${ladeIndikatorHöhe}px)`;
-            
-            // Finde heraus, welche Ansicht gerade aktiv ist, und lade nur deren Daten neu
-            const aktiveAnsicht = document.querySelector('.app-ansicht:not(.ausblenden)');
-            
-            if (aktiveAnsicht) {
-                if (aktiveAnsicht.id === 'ansicht-suche' && typeof window.artikelLaden === 'function') {
-                    window.artikelLaden();
-                } else if (aktiveAnsicht.id === 'ansicht-startseite' && typeof window.aktiveFilialArtikelLaden === 'function') {
-                    window.aktiveFilialArtikelLaden();
-                } else {
-                    // Fallback
-                    location.reload();
-                }
+        
+        ladeIndikator.style.transform = 'translateY(0)';
+        
+        // Aktive Ansicht ermitteln und gezielt aktualisieren (Kein harter Reload!)
+        const aktiveAnsicht = document.querySelector('.app-ansicht:not(.ausblenden)');
+        
+        if (aktiveAnsicht) {
+            if (aktiveAnsicht.id === 'ansicht-suche' && typeof window.artikelLaden === 'function') {
+                window.artikelLaden();
+            } else if (aktiveAnsicht.id === 'ansicht-startseite' && typeof window.aktiveFilialArtikelLaden === 'function') {
+                window.aktiveFilialArtikelLaden();
+            } else {
+                console.log('Datenbereich aktualisiert.');
             }
-
-            // Indikator nach kurzer Zeit wieder nach oben verstecken
-            setTimeout(() => {
-                ladeIndikator.style.transform = 'translateY(0)';
-            }, 800);
-        } else {
-            ladeIndikator.style.transform = 'translateY(0)';
         }
+
         istAmAnfang = false;
     });
 });
