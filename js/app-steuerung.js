@@ -60,7 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const gemerkteAnsicht = sessionStorage.getItem('kik_aktive_ansicht');
         if (gemerkteAnsicht) {
             const zielBtn = document.querySelector(`[data-ziel="${gemerkteAnsicht}"]`);
-            if (zielBtn && window.getComputedStyle(zielBtn).display !== 'none') {
+            const zielAnsicht = document.getElementById(gemerkteAnsicht);
+            if (zielBtn && zielAnsicht) {
                 wechsleAnsicht(gemerkteAnsicht, false);
             }
         }
