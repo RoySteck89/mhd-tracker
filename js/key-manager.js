@@ -25,7 +25,6 @@ class KeyManager {
         const keyParam = urlParams.get('key');
         
         if (keyParam) {
-            // Kurz warten, bis das DOM komplett bereit ist, falls das Script früh lädt
             window.addEventListener('DOMContentLoaded', () => {
                 const eingabeFeld = document.getElementById('eingabe-aktivierungsschluessel');
                 const schrittCode = document.getElementById('auth-schritt-code');
@@ -35,7 +34,6 @@ class KeyManager {
                     eingabeFeld.value = keyParam.trim();
                 }
 
-                // Direkt zur Code-Eingabe / Aktivierung springen, wenn der Parameter da ist
                 if (schrittCode && schrittLogin) {
                     schrittLogin.style.display = 'none';
                     schrittLogin.classList.add('ausblenden');
@@ -46,7 +44,7 @@ class KeyManager {
         }
     }
 
-    // 3. Key in der Datenbank validieren
+    // 3. Key in der Datenbank validieren (WICHTIG: Multikeys für Mitarbeiter nicht als "benutzt" sperren!)
     async pruefeKey(schluesselCode) {
         if (!this.supabase) throw new Error('Datenbank nicht verbunden.');
 
@@ -61,21 +59,20 @@ class KeyManager {
 
         const lizenz = data[0];
 
-        // Einmal-Key-Prüfung
+        // Wenn es ein echter Einmal-Key ist und bereits benutzt wurde -> Fehler
         if (lizenz.ist_einmalig && lizenz.benutzt) {
             return { gueltig: false, fehler: 'Dieser Aktivierungsschlüssel wurde bereits verwendet!' };
         }
 
+        // Mitarbeiter-Multikeys (Filial-Aushang-Keys) dürfen mehrfach verwendet werden!
         return { gueltig: true, lizenz: lizenz };
     }
 
-    // 4. Einmal-Key einlösen und unwiderruflich aus der Datenbank löschen (Sicherheits-Standard)
+    // 4. Einmal-Key einlösen
     async loeseEinmalKeyEin(lizenzId) {
         if (!this.supabase) return false;
 
         try {
-            // Nach erfolgreicher Nutzung wird der Einmal-Key komplett entfernt, 
-            // um Duplicate-Key-Fehler oder Missbrauch zu 100% auszuschließen.
             const { error } = await this.supabase
                 .from('lizenz_schluessel')
                 .delete()
@@ -116,12 +113,10 @@ class KeyManager {
 // Globales KeyManager-Objekt bereitstellen
 window.keyManager = new KeyManager();
 
-// Automatisch mit der Supabase-Verbindung verknüpfen, sobald sie bereit ist
 document.addEventListener('DOMContentLoaded', () => {
     if (window.supabaseVerbindung && window.supabaseVerbindung.client) {
         window.keyManager.init(window.supabaseVerbindung.client);
     } else {
-        // Fallback: Kurz warten, falls datenbank-verbindung.js einen Tick später lädt
         const checkInterval = setInterval(() => {
             if (window.supabaseVerbindung && window.supabaseVerbindung.client) {
                 window.keyManager.init(window.supabaseVerbindung.client);
