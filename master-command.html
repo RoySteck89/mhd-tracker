@@ -756,33 +756,33 @@
 
                     // Statistik Werte
                     document.getElementById('stat-filialen').textContent = filialen.length;
-                    document.getElementById('stat-ma').textContent = alleNutzerCache.filter(k => k.rolle === 'Mitarbeiter').length;
+                    document.getElementById('stat-ma').textContent = alleNutzerCache.filter(k => k.rolle.toLowerCase() === 'mitarbeiter').length;
                     document.getElementById('stat-artikel').textContent = artikel.length;
                     document.getElementById('stat-mhd').textContent = mhdEintraege.filter(m => m.status === 'aktiv').length;
 
                     // Tabellen befüllen
                     const tabMa = document.getElementById('tabelle-mitarbeiter');
-                    renderTabelleNutzer(tabMa, alleNutzerCache.filter(k => k.rolle === 'Mitarbeiter'));
+                    renderTabelleNutzer(tabMa, alleNutzerCache.filter(k => k.rolle.toLowerCase() === 'mitarbeiter'));
 
                     const tabTl = document.getElementById('tabelle-teamleiter');
-                    renderTabelleNutzer(tabTl, alleNutzerCache.filter(k => k.rolle === 'Teamleitung'));
+                    renderTabelleNutzer(tabTl, alleNutzerCache.filter(k => k.rolle.toLowerCase() === 'teamleitung'));
 
                     const tabBl = document.getElementById('tabelle-bezirksleitung');
-                    renderTabelleNutzer(tabBl, alleNutzerCache.filter(k => k.rolle === 'Bezirksleitung'), true);
+                    renderTabelleNutzer(tabBl, alleNutzerCache.filter(k => k.rolle.toLowerCase() === 'bezirksleitung'), true);
 
                     offeneKeysRendern();
 
                     // 2. Geschützte Keys
                     const tabGeschützte = document.getElementById('tabelle-geschützte-keys');
-                    const geschützteKeys = alleKeysCache.filter(k => k.rolle !== 'Master-Admin' && ((k.benutzt || k.personalnummer) || (k.rolle === 'Mitarbeiter' && k.filiale_id)));
+                    const geschützteKeys = alleKeysCache.filter(k => k.rolle.toLowerCase() !== 'master-admin' && ((k.benutzt || k.personalnummer) || (k.rolle.toLowerCase() === 'mitarbeiter' && k.filiale_id)));
 
                     if (geschützteKeys.length === 0) {
                         tabGeschützte.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Keine geschützten Keys im System.</td></tr>`;
                     } else {
                         tabGeschützte.innerHTML = '';
                         geschützteKeys.forEach(k => {
-                            const istTeamleiter = (k.rolle === 'Teamleitung');
-                            const istMitarbeiterAushang = (k.rolle === 'Mitarbeiter' && k.filiale_id);
+                            const istTeamleiter = (k.rolle.toLowerCase() === 'teamleitung');
+                            const istMitarbeiterAushang = (k.rolle.toLowerCase() === 'mitarbeiter' && k.filiale_id && !k.ist_einmalig);
                             const tr = document.createElement('tr');
                             
                             tr.innerHTML = `
@@ -834,7 +834,7 @@
                 const tabOffene = document.getElementById('tabelle-offene-keys');
                 const suchBegriff = document.getElementById('cmd-keys-suche').value.trim().toLowerCase();
 
-                const offeneKeys = alleKeysCache.filter(k => !k.benutzt && !k.personalnummer && k.rolle !== 'Master-Admin' && !(k.rolle === 'Mitarbeiter' && k.filiale_id));
+                const offeneKeys = alleKeysCache.filter(k => !k.benutzt && !k.personalnummer && k.rolle.toLowerCase() !== 'master-admin' && !(k.rolle.toLowerCase() === 'mitarbeiter' && k.filiale_id));
                 
                 const gefiltert = offeneKeys.filter(k => {
                     if (!suchBegriff) return true;
@@ -850,12 +850,11 @@
 
                 tabOffene.innerHTML = '';
                 gefiltert.forEach(k => {
-                    // Prüfen ob die entsprechende Rolle / Bezeichnung bereits aktiv im System ist
                     let accountBereitsAktiv = false;
-                    if (k.rolle === 'Teamleitung') {
-                        accountBereitsAktiv = alleNutzerCache.some(n => n.rolle === 'Teamleitung' && n.bezeichnung && k.bezeichnung && n.bezeichnung.toLowerCase() === k.bezeichnung.toLowerCase());
-                    } else if (k.rolle === 'Bezirksleitung') {
-                        accountBereitsAktiv = alleNutzerCache.some(n => n.rolle === 'Bezirksleitung' && n.bezeichnung && k.bezeichnung && n.bezeichnung.toLowerCase() === k.bezeichnung.toLowerCase());
+                    if (k.rolle.toLowerCase() === 'teamleitung') {
+                        accountBereitsAktiv = alleNutzerCache.some(n => n.rolle.toLowerCase() === 'teamleitung' && n.bezeichnung && k.bezeichnung && n.bezeichnung.toLowerCase() === k.bezeichnung.toLowerCase());
+                    } else if (k.rolle.toLowerCase() === 'bezirksleitung') {
+                        accountBereitsAktiv = alleNutzerCache.some(n => n.rolle.toLowerCase() === 'bezirksleitung' && n.bezeichnung && k.bezeichnung && n.bezeichnung.toLowerCase() === k.bezeichnung.toLowerCase());
                     }
 
                     const tr = document.createElement('tr');
@@ -913,11 +912,16 @@
 
                 behaelter.innerHTML = '';
                 filialen.forEach(f => {
-                    const fCode = f.filial_code || '';
+                    const fCode = f.filial_code ? f.filial_code.toString().trim() : '';
+                    const saubereFilialCode = fCode.toLowerCase();
                     
-                    const teamleiterKey = schluessel.find(k => k.filiale_id === fCode && k.rolle === 'Teamleitung');
-                    const mitarbeiterAushangKey = schluessel.find(k => k.filiale_id === fCode && k.rolle === 'Mitarbeiter');
-                    const registrierteMitarbeiter = schluessel.filter(k => k.filiale_id === fCode && k.rolle === 'Mitarbeiter' && (k.benutzt || k.personalnummer));
+                    const teamleiterKey = schluessel.find(k => k.filiale_id && k.filiale_id.toString().trim().toLowerCase() === saubereFilialCode && k.rolle.toLowerCase() === 'teamleitung');
+                    const mitarbeiterAushangKey = schluessel.find(k => k.filiale_id && k.filiale_id.toString().trim().toLowerCase() === saubereFilialCode && k.rolle.toLowerCase() === 'mitarbeiter' && !k.ist_einmalig);
+                    
+                    const registrierteMitarbeiter = schluessel.filter(k => {
+                        const kFiliale = k.filiale_id ? k.filiale_id.toString().trim().toLowerCase() : '';
+                        return kFiliale === saubereFilialCode && k.rolle.toLowerCase() === 'mitarbeiter' && k.ist_einmalig === true && (k.benutzt || k.personalnummer);
+                    });
 
                     const card = document.createElement('div');
                     card.style.cssText = 'background: #0F172A; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;';
@@ -936,7 +940,7 @@
                                 <button class="btn btn-danger btn-loeschen" data-table="filialen" data-id="${f.id}" style="padding: 4px 8px; font-size: 0.78rem;">🗑️ Löschen</button>
                             </div>
                         </div>
-                        <div class="filiale-details" style="display: none; padding: 16px; border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 14px;">
+                        <div class="filiale-details" style="display: none; padding: 16px; border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.2); flex-direction: column; gap: 14px;">
                             
                             <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 14px;">
                                 <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 4px;">👑 Verantwortliche Teamleitung</div>
@@ -1027,19 +1031,32 @@
 
                 behaelter.innerHTML = '';
                 gefiltert.forEach(artikel => {
+                    let kategorieBadgeFarbe = '#334155';
+                    let kategorieTextFarbe = '#F8FAFC';
+                    if (artikel.kategorie === 'Süßigkeiten') { kategorieBadgeFarbe = '#FCE7F3'; kategorieTextFarbe = '#9D174D'; }
+                    else if (artikel.kategorie === 'Getränke') { kategorieBadgeFarbe = '#E0F2FE'; kategorieTextFarbe = '#0369A1'; }
+                    else if (artikel.kategorie === 'Tierfutter') { kategorieBadgeFarbe = '#FEF3C7'; kategorieTextFarbe = '#92400E'; }
+
                     const card = document.createElement('div');
                     card.style.cssText = 'background: #0F172A; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;';
                     
                     card.innerHTML = `
                         <div class="artikel-kopf" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="display: flex; align-items: center; gap: 10px; flex: 1; padding-right: 12px;">
                                 <span class="pfeil" style="color: var(--text-muted); font-size: 0.8rem;">▶</span>
-                                <div>
-                                    <div style="font-weight: 600; color: var(--text-main);">${artikel.artikelname}</div>
-                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Barcode: <span class="mono">${artikel.barcode}</span> | Kat: ${artikel.kategorie || 'Süßigkeiten'}</div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">${artikel.artikelname}</div>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 0.75rem; color: var(--text-muted);">Barcode: <span class="mono">${artikel.barcode}</span></span>
+                                        <select class="cmd-kategorie-dropdown" data-id="${artikel.id}" style="font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: ${kategorieBadgeFarbe}; color: ${kategorieTextFarbe}; font-weight: 600; border: 1px solid var(--border-color); cursor: pointer;" onclick="event.stopPropagation()">
+                                            <option value="Süßigkeiten" ${artikel.kategorie === 'Süßigkeiten' ? 'selected' : ''}>🍫 Süßigkeiten</option>
+                                            <option value="Getränke" ${artikel.kategorie === 'Getränke' ? 'selected' : ''}>🥤 Getränke</option>
+                                            <option value="Tierfutter" ${artikel.kategorie === 'Tierfutter' ? 'selected' : ''}>🐾 Tierfutter</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
-                            <button class="btn btn-danger btn-loeschen" data-table="artikel" data-id="${artikel.id}" onclick="event.stopPropagation()">🗑️ Artikel löschen</button>
+                            <button class="btn btn-danger btn-loeschen" data-table="artikel" data-id="${artikel.id}" onclick="event.stopPropagation()" style="padding: 6px 10px; font-size: 0.8rem;">🗑️ Artikel löschen</button>
                         </div>
                         <div class="artikel-details" style="display: none; padding: 12px 16px; border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.2);">
                             <div class="mhd-inhalt">Lade MHD-Einträge...</div>
@@ -1047,6 +1064,31 @@
                     `;
 
                     behaelter.appendChild(card);
+
+                    // Dropdown Event-Listener für Kategorie-Änderung
+                    const dropdown = card.querySelector('.cmd-kategorie-dropdown');
+                    if (dropdown) {
+                        dropdown.addEventListener('change', async (e) => {
+                            const neueKategorie = e.target.value;
+                            const artikelId = e.target.getAttribute('data-id');
+
+                            try {
+                                const { error } = await supabaseClient
+                                    .from('artikel')
+                                    .update({ kategorie: neueKategorie })
+                                    .eq('id', artikelId);
+
+                                if (error) throw error;
+
+                                const gefundenerArtikel = alleArtikelCache.find(a => a.id == artikelId);
+                                if (gefundenerArtikel) gefundenerArtikel.kategorie = neueKategorie;
+
+                                artikelAnsichtRendern();
+                            } catch (err) {
+                                alert('Fehler beim Ändern der Kategorie: ' + err.message);
+                            }
+                        });
+                    }
 
                     const kopf = card.querySelector('.artikel-kopf');
                     const details = card.querySelector('.artikel-details');
@@ -1138,7 +1180,7 @@
                         editPin.value = btn.getAttribute('data-pin');
                         const rolle = btn.getAttribute('data-rolle');
                         
-                        if (rolle === 'Bezirksleitung') {
+                        if (rolle.toLowerCase() === 'bezirksleitung') {
                             editFilialeGruppe.style.display = 'none';
                         } else {
                             editFilialeGruppe.style.display = 'flex';
