@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MHD-Tracker – Master Command Center</title>
+
+    <!-- Supabase Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Google Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-main: #0F172A;
+            --bg-sidebar: #1E293B;
+            --bg-card: #1E293B;
+            --border-color: #334155;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --accent: #0D9488;
+            --accent-hover: #14B8A6;
+            --danger: #EF4444;
+            --success: #10B981;
+            --warning: #F59E0B;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Navigation */
+        aside {
+            width: 280px;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 24px;
+        }
+
+        .logo-bereich {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--accent);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .logo-text h1 {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .logo-text span {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 12px 16px;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+        }
+
+        .nav-btn.aktiv {
+            background: var(--accent);
+            color: #FFFFFF;
+            font-weight: 600;
+        }
+
+        .nav-unterpunkt {
+            padding-left: 36px;
+            font-size: 0.85rem;
+        }
+
+        /* Hauptbereich */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 20px 32px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(8px);
+        }
+
+        header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .content-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Statistik Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .stat-wert {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        /* Inhalts-Sektionen (Tabs) */
+        .admin-tab-inhalt {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .admin-tab-inhalt.aktiv {
+            display: flex;
+        }
+
+        .card-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card-titel {
+            font-size: 1.05rem;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Tabellen Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: #38BDF8;
+        }
+
+        /* Buttons & Actions */
+        .btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-success {
+            background: var(--success);
+        }
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+        .btn-danger:hover {
+            background: #DC2626;
+        }
+
+        .btn-secondary {
+            background: #475569;
+        }
+        .btn-secondary:hover {
+            background: #64748B;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .form-control {
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent);
+        }
+
+        /* Modal Overlays */
+        #modal-overlay, #filiale-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            width: 100%;
+            max-width: 440px;
+            padding: 28px;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .filter-leiste {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .filter-btn {
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .filter-btn.aktiv {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Bearbeitungs-Modal für Benutzer -->
+    <div id="modal-overlay">
+        <div class="modal-box">
+            <h3 style="font-size: 1.15rem; font-weight: 700;">Profil bearbeiten</h3>
+            <input type="hidden" id="edit-id">
+            
+            <div class="form-group">
+                <label>Name / Bezeichnung</label>
+                <input type="text" id="edit-name" class="form-control" placeholder="Name eingeben...">
+            </div>
+            <div class="form-group">
+                <label>Personalnummer (6-stellig)</label>
+                <input type="text" id="edit-persnr" class="form-control" maxlength="6" placeholder="z.B. 123456">
+            </div>
+            <div class="form-group">
+                <label>PIN (4-stellig)</label>
+                <input type="text" id="edit-pin" class="form-control" maxlength="4" placeholder="z.B. 1234">
+            </div>
+            <div class="form-group" id="edit-filiale-gruppe">
+                <label>Filiale / Bindung</label>
+                <input type="text" id="edit-filiale" class="form-control" placeholder="z.B. 2053">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="btn btn-secondary" id="modal-abbrechen" style="flex: 1;">Abbrechen</button>
+                <button class="btn btn-success" id="modal-speichern" style="flex: 1;">💾 Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bearbeitungs-Modal für Filialen -->
+    <div id="filiale-modal-overlay">
+        <div class="modal-box">
+            <h3 style="font-size: 1.15rem; font-weight: 700;">Filiale bearbeiten</h3>
+            <input type="hidden" id="edit-filiale-id">
+            
+            <div class="form-group">
+                <label>Filial-Name / Standort</label>
+                <input type="text" id="edit-filiale-name" class="form-control" placeholder="z.B. 2053 Dietmannsried">
+            </div>
+            <div class="form-group">
+                <label>Filial-Code / ID</label>
+                <input type="text" id="edit-filiale-code" class="form-control" placeholder="z.B. 2053">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="btn btn-secondary" id="filiale-modal-abbrechen" style="flex: 1;">Abbrechen</button>
+                <button class="btn btn-success" id="filiale-modal-speichern" style="flex: 1;">💾 Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside>
+        <div>
+            <div class="logo-bereich">
+                <div class="logo-icon">👑</div>
+                <div class="logo-text">
+                    <h1>Command Center</h1>
+                    <span>Master Admin</span>
+                </div>
+            </div>
+
+            <div class="nav-links">
+                <button class="nav-btn" data-tab="tab-ubersicht">📊 Übersicht & Live</button>
+                
+                <div style="font-size: 0.75rem; color: var(--text-muted); padding: 12px 16px 4px 16px; font-weight: 700; text-transform: uppercase;">Lizenz & Personal</div>
+                <button class="nav-btn nav-unterpunkt" data-tab="tab-mitarbeiter">👤 Mitarbeiter</button>
+                <button class="nav-btn nav-unterpunkt" data-tab="tab-teamleiter">📋 Teamleitungen</button>
+                <button class="nav-btn nav-unterpunkt" data-tab="tab-bezirksleitung">🏢 Bezirksleitungen</button>
+                <button class="nav-btn nav-unterpunkt" data-tab="tab-offene-keys">⚡ Offene Einmal-Keys</button>
+
+                <div style="font-size: 0.75rem; color: var(--text-muted); padding: 12px 16px 4px 16px; font-weight: 700; text-transform: uppercase;">Strukturen & Bestand</div>
+                <button class="nav-btn" data-tab="tab-filialen">🏬 Filialen & Bezirke</button>
+                <button class="nav-btn" data-tab="tab-artikel">📦 Artikel & MHD-Bestand</button>
+            </div>
+        </div>
+
+        <div style="font-size: 0.75rem; color: var(--text-muted); text-align: center;">
+            MHD-Tracker v3.0 <br>Supabase Connected
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main>
+        <header>
+            <h2 id="seiten-titel">Übersicht & Live-Status</h2>
+            <div class="status-badge">🟢 Datenbank Online</div>
+        </header>
+
+        <div class="content-body">
+
+            <!-- TAB 1: ÜBERSICHT -->
+            <div id="tab-ubersicht" class="admin-tab-inhalt">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Aktive Filialen</span>
+                        <span id="stat-filialen" class="stat-wert">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Registrierte Mitarbeiter</span>
+                        <span id="stat-ma" class="stat-wert" style="color: var(--success);">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Gespeicherte Artikel</span>
+                        <span id="stat-artikel" class="stat-wert">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Aktive MHD-Einträge</span>
+                        <span id="stat-mhd" class="stat-wert" style="color: var(--warning);">0</span>
+                    </div>
+                </div>
+
+                <div class="card-box">
+                    <div class="card-titel">Letzte System-Aktivitäten & Registrierungen</div>
+                    <div id="live-log-container">Lade Logbuch...</div>
+                </div>
+            </div>
+
+            <!-- TAB 2: MITARBEITER -->
+            <div id="tab-mitarbeiter" class="admin-tab-inhalt">
+                <div class="card-box">
+                    <div class="card-titel">Registrierte Mitarbeiter (Eingelöste Profile)</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Personal-Nr.</th>
+                                <th>PIN</th>
+                                <th>Filiale</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelle-mitarbeiter">
+                            <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Lade Mitarbeiter...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 3: TEAMLEITUNGEN -->
+            <div id="tab-teamleiter" class="admin-tab-inhalt">
+                <div class="card-box">
+                    <div class="card-titel">Teamleitungen & Filialverantwortliche</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Personal-Nr.</th>
+                                <th>PIN</th>
+                                <th>Filiale</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelle-teamleiter">
+                            <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Lade Teamleitungen...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 4: BEZIRKSLEITUNGEN -->
+            <div id="tab-bezirksleitung" class="admin-tab-inhalt">
+                <div class="card-box">
+                    <div class="card-titel">Bezirksleitungen</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Personal-Nr.</th>
+                                <th>PIN</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelle-bezirksleitung">
+                            <tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Lade Bezirksleitungen...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 5: OFFENE KEYS & GESCHÜTZTE KEYS -->
+            <div id="tab-offene-keys" class="admin-tab-inhalt">
+                <div class="card-box">
+                    <div class="card-titel">Neuen System-Key generieren</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Rolle / Berechtigung</label>
+                            <select id="cmd-key-rolle" class="form-control">
+                                <option value="Bezirksleitung">Bezirksleitung</option>
+                                <option value="Teamleitung">Teamleitung</option>
+                                <option value="Mitarbeiter">Mitarbeiter (Notfall-Key)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Bezeichnung / Inhaber / Bezirk</label>
+                            <input type="text" id="cmd-key-bez" class="form-control" placeholder="z.B. Bezirk Süd oder Filiale 2053">
+                        </div>
+                        <button class="btn" id="cmd-key-erstellen" style="height: 41px;">⚡ Key generieren</button>
+                    </div>
+                </div>
+
+                <div class="card-box">
+                    <div class="card-titel">
+                        <span>Noch nicht eingelöste Einmal-Keys</span>
+                        <input type="text" id="cmd-keys-suche" class="form-control" placeholder="🔍 Live-Suche (Code / Name)..." style="width: 260px; padding: 6px 10px; font-size: 0.82rem;">
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Schlüssel-Code</th>
+                                <th>Rolle</th>
+                                <th>Bezeichnung</th>
+                                <th>Filiale / Bindung</th>
+                                <th>Account-Status</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelle-offene-keys">
+                            <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Lade offene Keys...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card-box" style="border-color: rgba(239, 68, 68, 0.3);">
+                    <div class="card-titel" style="color: var(--text-main);">
+                        Geschützte Filial- & Teamleiter-Schlüssel (System-Aushänge & Accounts)
+                    </div>
+                    <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: -8px;">
+                        Aktive Teamleiter-Accounts und dauerhafte Mitarbeiter-Aushang-Schlüssel (Multikeys) sind hier geschützt und dürfen <strong>nicht</strong> gelöscht werden!
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Schlüssel-Code</th>
+                                <th>Rolle</th>
+                                <th>Bezeichnung / Inhaber</th>
+                                <th>Filiale</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelle-geschützte-keys">
+                            <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Lade geschützte Keys...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 6: FILIALEN & BEZIRKE -->
+            <div id="tab-filialen" class="admin-tab-inhalt">
+                <div class="card-box">
+                    <div class="card-titel">Neue Filiale anlegen</div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Standort / Name</label>
+                            <input type="text" id="cmd-filiale-name" class="form-control" placeholder="z.B. 2053 Dietmannsried">
+                        </div>
+                        <div class="form-group">
+                            <label>Filial-Code / ID</label>
+                            <input type="text" id="cmd-filiale-code" class="form-control" placeholder="z.B. 2053">
+                        </div>
+                        <button class="btn" id="cmd-filiale-erstellen" style="height: 41px;">🏢 Filiale registrieren</button>
+                    </div>
+                </div>
+
+                <div class="card-box">
+                    <div class="card-titel">Registrierte Filialen, Teamleiter-Keys & Mitarbeiter-Aushänge</div>
+                    <div id="filialen-liste-behaelter" style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="text-align: center; color: var(--text-muted); padding: 20px;">Lade Filialen...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 7: ARTIKEL & MHD-BESTAND -->
+            <div id="tab-artikel" class="admin-tab-inhalt">
+                <div class="card-box">
+                    <div class="card-titel">Artikel- & MHD-Verwaltung (App-Ansicht)</div>
+                    
+                    <div class="form-row" style="margin-bottom: 12px;">
+                        <div class="form-group">
+                            <label>Live-Suche nach Artikelnamen</label>
+                            <input type="text" id="cmd-artikel-suche" class="form-control" placeholder="Artikel eingeben...">
+                        </div>
+                    </div>
+
+                    <div class="filter-leiste">
+                        <button class="filter-btn aktiv" data-kategorie="alle">Alle Kategorien</button>
+                        <button class="filter-btn" data-kategorie="Süßigkeiten">🍫 Süßigkeiten</button>
+                        <button class="filter-btn" data-kategorie="Getränke">🥤 Getränke</button>
+                        <button class="filter-btn" data-kategorie="Tierfutter">🐾 Tierfutter</button>
+                    </div>
+
+                    <div id="artikel-liste-behaelter" style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="text-align: center; color: var(--text-muted); padding: 20px;">Lade Artikel...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Master-Command Logik -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const MASTER_PIN = "9999"; 
+            const eingabePin = prompt("🔒 Master Command Center gesichert.\nBitte Master-Code eingeben:");
+            if (eingabePin !== MASTER_PIN) {
+                alert("Zugriff verweigert! Falscher Code.");
+                document.body.innerHTML = "<h2 style='color: white; text-align: center; margin-top: 20vh;'>🔒 Zugriff gesperrt. Bitte Seite neu laden.</h2>";
+                throw new Error("Zugriff abgebrochen");
+            }
+
+            const SUPABASE_URL = 'https://zbbmaxwbjqhuziuxoytn.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiYm1heHdianFodXppdXhveXRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyODQxMzQsImV4cCI6MjEwODg2MDEzNH0.zoNrYe7tvyf-m7QjGciPYiT5ZdpJHdYEcAvCB-yNlig';
+            const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            let alleArtikelCache = [];
+            let alleKeysCache = [];
+            let alleNutzerCache = [];
+            let aktuellerFilter = 'alle';
+
+            const navButtons = document.querySelectorAll('.nav-btn');
+            const tabInhalte = document.querySelectorAll('.admin-tab-inhalt');
+            const seitenTitel = document.getElementById('seiten-titel');
+
+            function aktiviereTab(tabId, buttonElement) {
+                navButtons.forEach(b => b.classList.remove('aktiv'));
+                tabInhalte.forEach(t => t.classList.remove('aktiv'));
+
+                if (buttonElement) {
+                    buttonElement.classList.add('aktiv');
+                    seitenTitel.textContent = buttonElement.textContent.replace(/^[^\w\s]+/, '').trim();
+                }
+
+                const zielTab = document.getElementById(tabId);
+                if (zielTab) {
+                    zielTab.classList.add('aktiv');
+                    localStorage.setItem('kik_master_letzter_tab', tabId);
+                }
+                datenLaden();
+            }
+
+            navButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const zielTabId = btn.getAttribute('data-tab');
+                    aktiviereTab(zielTabId, btn);
+                });
+            });
+
+            const letzterTab = localStorage.getItem('kik_master_letzter_tab') || 'tab-ubersicht';
+            const passenderButton = Array.from(navButtons).find(b => b.getAttribute('data-tab') === letzterTab) || navButtons[0];
+            aktiviereTab(letzterTab, passenderButton);
+
+            function generiereSicherenKey() {
+                const block = () => Math.floor(1000 + Math.random() * 9000);
+                return `KIK-${block()}-${block()}-${block()}`;
+            }
+
+            async function datenLaden() {
+                try {
+                    const [filialenRes, schluesselRes, artikelRes, mhdRes] = await Promise.all([
+                        supabaseClient.from('filialen').select('*'),
+                        supabaseClient.from('lizenz_schluessel').select('*'),
+                        supabaseClient.from('artikel').select('*'),
+                        supabaseClient.from('mhd_eintraege').select('*')
+                    ]);
+
+                    const filialen = filialenRes.data || [];
+                    alleKeysCache = schluesselRes.data || [];
+                    const artikel = artikelRes.data || [];
+                    const mhdEintraege = mhdRes.data || [];
+
+                    alleArtikelCache = artikel.sort((a, b) => a.artikelname.localeCompare(b.artikelname, 'de'));
+                    alleNutzerCache = alleKeysCache.filter(k => k.benutzt || k.personalnummer);
+
+                    // Statistik Werte
+                    document.getElementById('stat-filialen').textContent = filialen.length;
+                    document.getElementById('stat-ma').textContent = alleNutzerCache.filter(k => k.rolle === 'Mitarbeiter').length;
+                    document.getElementById('stat-artikel').textContent = artikel.length;
+                    document.getElementById('stat-mhd').textContent = mhdEintraege.filter(m => m.status === 'aktiv').length;
+
+                    // Tabellen befüllen
+                    const tabMa = document.getElementById('tabelle-mitarbeiter');
+                    renderTabelleNutzer(tabMa, alleNutzerCache.filter(k => k.rolle === 'Mitarbeiter'));
+
+                    const tabTl = document.getElementById('tabelle-teamleiter');
+                    renderTabelleNutzer(tabTl, alleNutzerCache.filter(k => k.rolle === 'Teamleitung'));
+
+                    const tabBl = document.getElementById('tabelle-bezirksleitung');
+                    renderTabelleNutzer(tabBl, alleNutzerCache.filter(k => k.rolle === 'Bezirksleitung'), true);
+
+                    offeneKeysRendern();
+
+                    // 2. Geschützte Keys
+                    const tabGeschützte = document.getElementById('tabelle-geschützte-keys');
+                    const geschützteKeys = alleKeysCache.filter(k => k.rolle !== 'Master-Admin' && ((k.benutzt || k.personalnummer) || (k.rolle === 'Mitarbeiter' && k.filiale_id)));
+
+                    if (geschützteKeys.length === 0) {
+                        tabGeschützte.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Keine geschützten Keys im System.</td></tr>`;
+                    } else {
+                        tabGeschützte.innerHTML = '';
+                        geschützteKeys.forEach(k => {
+                            const istTeamleiter = (k.rolle === 'Teamleitung');
+                            const istMitarbeiterAushang = (k.rolle === 'Mitarbeiter' && k.filiale_id);
+                            const tr = document.createElement('tr');
+                            
+                            tr.innerHTML = `
+                                <td class="mono">${k.schluessel_code}</td>
+                                <td><strong>${k.rolle}</strong></td>
+                                <td>${k.bezeichnung || '---'} ${k.personalnummer ? `<span style="font-size: 0.75rem; color: var(--text-muted);">(Pers-Nr: ${k.personalnummer})</span>` : ''}</td>
+                                <td>${k.filiale_id || 'Zentrale'}</td>
+                                <td>
+                                    ${istTeamleiter 
+                                        ? `<span style="background: rgba(16, 185, 129, 0.15); color: var(--success); padding: 4px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;">🔒 Geschützter Teamleiter-Key</span>` 
+                                        : istMitarbeiterAushang
+                                        ? `<span style="background: rgba(13, 148, 136, 0.15); color: #2DD4BF; padding: 4px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;">🔒 Geschützter Mitarbeiter-Aushang (Multikey)</span>`
+                                        : `<button class="btn btn-danger btn-loeschen" data-table="lizenz_schluessel" data-id="${k.id}" style="padding: 4px 8px; font-size: 0.78rem;">🗑️ Löschen</button>`
+                                    }
+                                </td>
+                            `;
+                            tabGeschützte.appendChild(tr);
+                        });
+                    }
+
+                    filialenAnsichtRendern(filialen, alleKeysCache);
+                    artikelAnsichtRendern();
+
+                    // Live Log
+                    const logContainer = document.getElementById('live-log-container');
+                    if (alleNutzerCache.length === 0) {
+                        logContainer.innerHTML = `<div style="color: var(--text-muted);">Bisher keine registrierten Benutzer im System.</div>`;
+                    } else {
+                        logContainer.innerHTML = '';
+                        alleNutzerCache.slice(-5).reverse().forEach(user => {
+                            const div = document.createElement('div');
+                            div.style.cssText = 'display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-color); font-size: 0.9rem;';
+                            div.innerHTML = `
+                                <div><strong>${user.bezeichnung}</strong> (${user.rolle}) – Filiale: ${user.filiale_id || 'Zentrale'}</div>
+                                <span style="color: var(--success); font-weight: 600;">Aktiv ✓</span>
+                            `;
+                            logContainer.appendChild(div);
+                        });
+                    }
+
+                    bindeAktionen();
+
+                } catch (err) {
+                    console.error('Fehler beim Laden:', err);
+                }
+            }
+
+            function offeneKeysRendern() {
+                const tabOffene = document.getElementById('tabelle-offene-keys');
+                const suchBegriff = document.getElementById('cmd-keys-suche').value.trim().toLowerCase();
+
+                const offeneKeys = alleKeysCache.filter(k => !k.benutzt && !k.personalnummer && k.rolle !== 'Master-Admin' && !(k.rolle === 'Mitarbeiter' && k.filiale_id));
+                
+                const gefiltert = offeneKeys.filter(k => {
+                    if (!suchBegriff) return true;
+                    return (k.schluessel_code && k.schluessel_code.toLowerCase().includes(suchBegriff)) ||
+                           (k.bezeichnung && k.bezeichnung.toLowerCase().includes(suchBegriff)) ||
+                           (k.rolle && k.rolle.toLowerCase().includes(suchBegriff));
+                });
+
+                if (gefiltert.length === 0) {
+                    tabOffene.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Keine passenden offenen Keys gefunden.</td></tr>`;
+                    return;
+                }
+
+                tabOffene.innerHTML = '';
+                gefiltert.forEach(k => {
+                    // Prüfen ob die entsprechende Rolle / Bezeichnung bereits aktiv im System ist
+                    let accountBereitsAktiv = false;
+                    if (k.rolle === 'Teamleitung') {
+                        accountBereitsAktiv = alleNutzerCache.some(n => n.rolle === 'Teamleitung' && n.bezeichnung && k.bezeichnung && n.bezeichnung.toLowerCase() === k.bezeichnung.toLowerCase());
+                    } else if (k.rolle === 'Bezirksleitung') {
+                        accountBereitsAktiv = alleNutzerCache.some(n => n.rolle === 'Bezirksleitung' && n.bezeichnung && k.bezeichnung && n.bezeichnung.toLowerCase() === k.bezeichnung.toLowerCase());
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="mono">${k.schluessel_code}</td>
+                        <td><strong>${k.rolle}</strong></td>
+                        <td>${k.bezeichnung || '---'}</td>
+                        <td>${k.filiale_id || 'Zentrale / Offen'}</td>
+                        <td>
+                            ${accountBereitsAktiv 
+                                ? `<span style="color: var(--success); font-weight: 600; font-size: 0.8rem;">✅ Account bereits aktiv (Kann gelöscht werden)</span>` 
+                                : `<span style="color: var(--warning); font-weight: 600; font-size: 0.8rem;">⏳ Noch unbenutzt / offen</span>`
+                            }
+                        </td>
+                        <td style="display: flex; gap: 6px;">
+                            <button class="btn btn-success btn-einloesen" data-id="${k.id}" style="padding: 4px 8px; font-size: 0.78rem;">✓ Aktivieren</button>
+                            <button class="btn btn-danger btn-loeschen" data-table="lizenz_schluessel" data-id="${k.id}" style="padding: 4px 8px; font-size: 0.78rem;">🗑️ Löschen</button>
+                        </td>
+                    `;
+                    tabOffene.appendChild(tr);
+                });
+                bindeAktionen();
+            }
+
+            document.getElementById('cmd-keys-suche').addEventListener('input', offeneKeysRendern);
+
+            function renderTabelleNutzer(tabElement, daten, istBl = false) {
+                if (daten.length === 0) {
+                    tabElement.innerHTML = `<tr><td colspan="${istBl ? 4 : 5}" style="text-align: center; color: var(--text-muted);">Keine Einträge in dieser Kategorie.</td></tr>`;
+                    return;
+                }
+                tabElement.innerHTML = '';
+                daten.forEach(u => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${u.bezeichnung}</strong></td>
+                        <td class="mono">${u.personalnummer || '---'}</td>
+                        <td class="mono">${u.pin || '---'}</td>
+                        ${istBl ? '' : `<td>${u.filiale_id || '---'}</td>`}
+                        <td style="display: flex; gap: 6px;">
+                            <button class="btn btn-secondary btn-bearbeiten" data-id="${u.id}" data-name="${u.bezeichnung || ''}" data-persnr="${u.personalnummer || ''}" data-pin="${u.pin || ''}" data-filiale="${u.filiale_id || ''}" data-rolle="${u.rolle}" style="padding: 4px 8px; font-size: 0.78rem;">✏️ Bearbeiten</button>
+                            <button class="btn btn-danger btn-loeschen" data-table="lizenz_schluessel" data-id="${u.id}" style="padding: 4px 8px; font-size: 0.78rem;">🗑️ Löschen</button>
+                        </td>
+                    `;
+                    tabElement.appendChild(tr);
+                });
+            }
+
+            function filialenAnsichtRendern(filialen, schluessel) {
+                const behaelter = document.getElementById('filialen-liste-behaelter');
+                if (filialen.length === 0) {
+                    behaelter.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">Keine Filialen registriert.</div>`;
+                    return;
+                }
+
+                behaelter.innerHTML = '';
+                filialen.forEach(f => {
+                    const fCode = f.filial_code || '';
+                    
+                    const teamleiterKey = schluessel.find(k => k.filiale_id === fCode && k.rolle === 'Teamleitung');
+                    const mitarbeiterAushangKey = schluessel.find(k => k.filiale_id === fCode && k.rolle === 'Mitarbeiter');
+                    const registrierteMitarbeiter = schluessel.filter(k => k.filiale_id === fCode && k.rolle === 'Mitarbeiter' && (k.benutzt || k.personalnummer));
+
+                    const card = document.createElement('div');
+                    card.style.cssText = 'background: #0F172A; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;';
+                    
+                    card.innerHTML = `
+                        <div class="filiale-kopf" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="pfeil" style="color: var(--text-muted); font-size: 0.8rem;">▶</span>
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-main);">${f.name} <span class="mono" style="font-size: 0.8rem;">(${fCode})</span></div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Teamleitung: ${teamleiterKey ? teamleiterKey.bezeichnung : 'Nicht zugeordnet'} | Reg. Mitarbeiter: ${registrierteMitarbeiter.length}</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 6px;" onclick="event.stopPropagation()">
+                                <button class="btn btn-secondary btn-filiale-bearbeiten" data-id="${f.id}" data-name="${f.name || ''}" data-code="${fCode}" style="padding: 4px 8px; font-size: 0.78rem;">✏️ Bearbeiten</button>
+                                <button class="btn btn-danger btn-loeschen" data-table="filialen" data-id="${f.id}" style="padding: 4px 8px; font-size: 0.78rem;">🗑️ Löschen</button>
+                            </div>
+                        </div>
+                        <div class="filiale-details" style="display: none; padding: 16px; border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 14px;">
+                            
+                            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 14px;">
+                                <div style="font-size: 0.75rem; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 4px;">👑 Verantwortliche Teamleitung</div>
+                                ${teamleiterKey ? `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem;">
+                                        <div><strong>${teamleiterKey.bezeichnung}</strong> (Pers-Nr: <span class="mono">${teamleiterKey.personalnummer || '---'}</span> | PIN: <span class="mono">${teamleiterKey.pin || '---'}</span>)</div>
+                                        <div style="font-size: 0.78rem; color: var(--text-muted);">Account-Key: <span class="mono">${teamleiterKey.schluessel_code}</span></div>
+                                    </div>
+                                ` : `<div style="font-size: 0.85rem; color: var(--text-muted);">Keine Teamleitung zugewiesen.</div>`}
+                            </div>
+
+                            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 14px;">
+                                <div style="font-size: 0.75rem; font-weight: 700; color: var(--warning); text-transform: uppercase; margin-bottom: 4px;">📄 Aktiver Mitarbeiter-Aushang-Key (Multikey)</div>
+                                ${mitarbeiterAushangKey ? `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem;">
+                                        <div>Code: <strong class="mono" style="color: var(--success); font-size: 0.95rem;">${mitarbeiterAushangKey.schluessel_code}</strong></div>
+                                        <div style="font-size: 0.78rem; color: var(--text-muted);">Bezeichnung: ${mitarbeiterAushangKey.bezeichnung || '---'}</div>
+                                    </div>
+                                ` : `<div style="font-size: 0.85rem; color: var(--text-muted);">Kein offener Aushang-Key für Mitarbeiter hinterlegt.</div>`}
+                            </div>
+
+                            <div>
+                                <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">👥 Registrierte Mitarbeiter in dieser Filiale (${registrierteMitarbeiter.length}):</div>
+                                <div class="personal-inhalt">Lade Personal...</div>
+                            </div>
+
+                        </div>
+                    `;
+
+                    behaelter.appendChild(card);
+
+                    const kopf = card.querySelector('.filiale-kopf');
+                    const details = card.querySelector('.filiale-details');
+                    const pfeil = card.querySelector('.pfeil');
+                    const personalInhalt = card.querySelector('.personal-inhalt');
+
+                    kopf.addEventListener('click', () => {
+                        const istOffen = details.style.display === 'flex';
+                        if (!istOffen) {
+                            details.style.display = 'flex';
+                            pfeil.style.transform = 'rotate(90deg)';
+
+                            if (registrierteMitarbeiter.length === 0) {
+                                personalInhalt.innerHTML = `<span style="color: var(--text-muted); font-size: 0.85rem;">Bisher hat sich noch kein Mitarbeiter über den Aushang registriert.</span>`;
+                            } else {
+                                personalInhalt.innerHTML = '';
+                                const ul = document.createElement('div');
+                                ul.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
+                                
+                                registrierteMitarbeiter.forEach(p => {
+                                    const row = document.createElement('div');
+                                    row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem;';
+                                    row.innerHTML = `
+                                        <div>
+                                            <strong>${p.bezeichnung}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(Mitarbeiter)</span>
+                                        </div>
+                                        <div style="display: flex; gap: 16px;">
+                                            <span>Pers-Nr: <strong class="mono">${p.personalnummer || '---'}</strong></span>
+                                            <span>PIN: <strong class="mono">${p.pin || '---'}</strong></span>
+                                        </div>
+                                    `;
+                                    ul.appendChild(row);
+                                });
+                                personalInhalt.appendChild(ul);
+                            }
+                        } else {
+                            details.style.display = 'none';
+                            pfeil.style.transform = 'rotate(0deg)';
+                        }
+                    });
+                });
+            }
+
+            function artikelAnsichtRendern() {
+                const behaelter = document.getElementById('artikel-liste-behaelter');
+                const suchBegriff = document.getElementById('cmd-artikel-suche').value.trim().toLowerCase();
+
+                const gefiltert = alleArtikelCache.filter(a => {
+                    const passtKat = (aktuellerFilter === 'alle' || a.kategorie === aktuellerFilter);
+                    const passtSuch = (suchBegriff === '' || a.artikelname.toLowerCase().includes(suchBegriff));
+                    return passtKat && passtSuch;
+                });
+
+                if (gefiltert.length === 0) {
+                    behaelter.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">Keine Artikel gefunden.</div>`;
+                    return;
+                }
+
+                behaelter.innerHTML = '';
+                gefiltert.forEach(artikel => {
+                    const card = document.createElement('div');
+                    card.style.cssText = 'background: #0F172A; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;';
+                    
+                    card.innerHTML = `
+                        <div class="artikel-kopf" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; cursor: pointer;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="pfeil" style="color: var(--text-muted); font-size: 0.8rem;">▶</span>
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-main);">${artikel.artikelname}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Barcode: <span class="mono">${artikel.barcode}</span> | Kat: ${artikel.kategorie || 'Süßigkeiten'}</div>
+                                </div>
+                            </div>
+                            <button class="btn btn-danger btn-loeschen" data-table="artikel" data-id="${artikel.id}" onclick="event.stopPropagation()">🗑️ Artikel löschen</button>
+                        </div>
+                        <div class="artikel-details" style="display: none; padding: 12px 16px; border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.2);">
+                            <div class="mhd-inhalt">Lade MHD-Einträge...</div>
+                        </div>
+                    `;
+
+                    behaelter.appendChild(card);
+
+                    const kopf = card.querySelector('.artikel-kopf');
+                    const details = card.querySelector('.artikel-details');
+                    const pfeil = card.querySelector('.pfeil');
+                    const mhdInhalt = card.querySelector('.mhd-inhalt');
+                    let mhdGeladen = false;
+
+                    kopf.addEventListener('click', async () => {
+                        const istOffen = details.style.display === 'block';
+                        if (!istOffen) {
+                            details.style.display = 'block';
+                            pfeil.style.transform = 'rotate(90deg)';
+
+                            if (!mhdGeladen) {
+                                const { data: mhdEintraege } = await supabaseClient
+                                    .from('mhd_eintraege')
+                                    .select('*')
+                                    .eq('artikel_id', artikel.id);
+
+                                if (!mhdEintraege || mhdEintraege.length === 0) {
+                                    mhdInhalt.innerHTML = `<span style="color: var(--text-muted); font-size: 0.85rem;">Keine MHD-Einträge erfasst.</span>`;
+                                } else {
+                                    mhdInhalt.innerHTML = '';
+                                    mhdEintraege.forEach(m => {
+                                        const zeile = document.createElement('div');
+                                        zeile.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.05);';
+                                        zeile.innerHTML = `
+                                            <div>MHD: <strong>${m.mhd_datum}</strong> (Filiale: ${m.filiale_id})</div>
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <span style="padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; background: var(--border-color);">${m.status}</span>
+                                                <button class="btn btn-danger btn-loeschen" data-table="mhd_eintraege" data-id="${m.id}" style="padding: 2px 6px; font-size: 0.75rem;">🗑️</button>
+                                            </div>
+                                        `;
+                                        mhdInhalt.appendChild(zeile);
+                                    });
+                                    bindeAktionen();
+                                }
+                                mhdGeladen = true;
+                            }
+                        } else {
+                            details.style.display = 'none';
+                            pfeil.style.transform = 'rotate(0deg)';
+                        }
+                    });
+                });
+            }
+
+            const modalOverlay = document.getElementById('modal-overlay');
+            const editId = document.getElementById('edit-id');
+            const editName = document.getElementById('edit-name');
+            const editPersNr = document.getElementById('edit-persnr');
+            const editPin = document.getElementById('edit-pin');
+            const editFiliale = document.getElementById('edit-filiale');
+            const editFilialeGruppe = document.getElementById('edit-filiale-gruppe');
+
+            const filialeModalOverlay = document.getElementById('filiale-modal-overlay');
+            const editFilialeId = document.getElementById('edit-filiale-id');
+            const editFilialeName = document.getElementById('edit-filiale-name');
+            const editFilialeCode = document.getElementById('edit-filiale-code');
+
+            function bindeAktionen() {
+                document.querySelectorAll('.btn-loeschen').forEach(btn => {
+                    btn.onclick = async (e) => {
+                        e.stopPropagation();
+                        const tabelle = btn.getAttribute('data-table');
+                        const id = btn.getAttribute('data-id');
+                        if (confirm('Eintrag wirklich unwiderruflich löschen?')) {
+                            await supabaseClient.from(tabelle).delete().eq('id', id);
+                            datenLaden();
+                        }
+                    };
+                });
+
+                document.querySelectorAll('.btn-einloesen').forEach(btn => {
+                    btn.onclick = async (e) => {
+                        e.stopPropagation();
+                        const id = btn.getAttribute('data-id');
+                        await supabaseClient.from('lizenz_schluessel').update({ benutzt: true }).eq('id', id);
+                        datenLaden();
+                    };
+                });
+
+                document.querySelectorAll('.btn-bearbeiten').forEach(btn => {
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        editId.value = btn.getAttribute('data-id');
+                        editName.value = btn.getAttribute('data-name');
+                        editPersNr.value = btn.getAttribute('data-persnr');
+                        editPin.value = btn.getAttribute('data-pin');
+                        const rolle = btn.getAttribute('data-rolle');
+                        
+                        if (rolle === 'Bezirksleitung') {
+                            editFilialeGruppe.style.display = 'none';
+                        } else {
+                            editFilialeGruppe.style.display = 'flex';
+                            editFiliale.value = btn.getAttribute('data-filiale');
+                        }
+
+                        modalOverlay.style.display = 'flex';
+                    };
+                });
+
+                document.querySelectorAll('.btn-filiale-bearbeiten').forEach(btn => {
+                    btn.onclick = (e) => {
+                        e.stopPropagation();
+                        editFilialeId.value = btn.getAttribute('data-id');
+                        editFilialeName.value = btn.getAttribute('data-name');
+                        editFilialeCode.value = btn.getAttribute('data-code');
+
+                        filialeModalOverlay.style.display = 'flex';
+                    };
+                });
+            }
+
+            document.getElementById('modal-abbrechen').addEventListener('click', () => {
+                modalOverlay.style.display = 'none';
+            });
+
+            document.getElementById('modal-speichern').addEventListener('click', async () => {
+                const id = editId.value;
+                const neuerName = editName.value.trim();
+                const neuePersNr = editPersNr.value.trim();
+                const neuePin = editPin.value.trim();
+                const neueFiliale = editFiliale.value.trim();
+
+                if (!neuerName) { alert('Bitte einen Namen eingeben.'); return; }
+
+                try {
+                    const updateDaten = { bezeichnung: neuerName, personalnummer: neuePersNr, pin: neuePin, benutzt: true };
+                    if (editFilialeGruppe.style.display !== 'none') { updateDaten.filiale_id = neueFiliale; }
+
+                    const { error } = await supabaseClient.from('lizenz_schluessel').update(updateDaten).eq('id', id);
+                    if (error) throw error;
+
+                    alert('Profil erfolgreich aktualisiert!');
+                    modalOverlay.style.display = 'none';
+                    datenLaden();
+                } catch (err) {
+                    alert('Fehler beim Speichern: ' + err.message);
+                }
+            });
+
+            document.getElementById('filiale-modal-abbrechen').addEventListener('click', () => {
+                filialeModalOverlay.style.display = 'none';
+            });
+
+            document.getElementById('filiale-modal-speichern').addEventListener('click', async () => {
+                const id = editFilialeId.value;
+                const neuerName = editFilialeName.value.trim();
+                const neuerCode = editFilialeCode.value.trim();
+
+                if (!neuerName || !neuerCode) { alert('Bitte Name und Code eingeben.'); return; }
+
+                try {
+                    const { error } = await supabaseClient.from('filialen').update({ 
+                        name: neuerName, 
+                        filial_code: neuerCode 
+                    }).eq('id', id);
+
+                    if (error) throw error;
+
+                    alert('Filiale erfolgreich aktualisiert!');
+                    filialeModalOverlay.style.display = 'none';
+                    datenLaden();
+                } catch (err) {
+                    alert('Fehler beim Speichern: ' + err.message);
+                }
+            });
+
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('aktiv'));
+                    btn.classList.add('aktiv');
+                    aktuellerFilter = btn.getAttribute('data-kategorie');
+                    artikelAnsichtRendern();
+                });
+            });
+
+            document.getElementById('cmd-artikel-suche').addEventListener('input', artikelAnsichtRendern);
+
+            document.getElementById('cmd-key-erstellen').addEventListener('click', async () => {
+                const rolle = document.getElementById('cmd-key-rolle').value;
+                const bezeichnung = document.getElementById('cmd-key-bez').value.trim();
+                if (!bezeichnung) { alert('Bitte Bezeichnung eingeben.'); return; }
+
+                const neuerCode = generiereSicherenKey();
+                await supabaseClient.from('lizenz_schluessel').insert([{
+                    schluessel_code: neuerCode, bezeichnung: bezeichnung, rolle: rolle, ist_einmalig: true, benutzt: false, thema: 'kik'
+                }]);
+                alert(`Key erstellt: ${neuerCode}`);
+                document.getElementById('cmd-key-bez').value = '';
+                datenLaden();
+            });
+
+            document.getElementById('cmd-filiale-erstellen').addEventListener('click', async () => {
+                const name = document.getElementById('cmd-filiale-name').value.trim();
+                const code = document.getElementById('cmd-filiale-code').value.trim();
+                if (!name || code === '') { alert('Bitte Name und Code eingeben.'); return; }
+
+                await supabaseClient.from('filialen').insert([{ 
+                    name: name, 
+                    filial_code: code 
+                }]);
+                alert('Filiale angelegt!');
+                document.getElementById('cmd-filiale-name').value = '';
+                document.getElementById('cmd-filiale-code').value = '';
+                datenLaden();
+            });
+        });
+    </script>
+</body>
+</html>

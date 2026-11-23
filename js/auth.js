@@ -206,9 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (lizenz.rolle === 'Mitarbeiter') {
-                    if (lizenz.ist_einmalig) {
-                        await window.keyManager.loeseEinmalKeyEin(lizenz.id);
-                    }
                     zeigeAuthSchritt(schrittMaReg);
                     return;
                 }
@@ -255,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         thema: 'kik'
                     }]);
 
-                if (temporaererLizenzSpeicher && temporaererLizenzSpeicher.id) {
+                if (temporaererLizenzSpeicher && temporaererLizenzSpeicher.id && temporaererLizenzSpeicher.ist_einmalig) {
                     await window.keyManager.loeseEinmalKeyEin(temporaererLizenzSpeicher.id);
                 }
 
@@ -313,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                if (temporaererLizenzSpeicher && temporaererLizenzSpeicher.id) {
+                if (temporaererLizenzSpeicher && temporaererLizenzSpeicher.id && temporaererLizenzSpeicher.ist_einmalig) {
                     await window.keyManager.loeseEinmalKeyEin(temporaererLizenzSpeicher.id);
                 }
 
@@ -384,14 +381,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (temporaererLizenzSpeicher) {
+                    // WICHTIG: Wir erzeugen einen NEUEN, EINZIGARTIGEN Schlüssel-Code für den Mitarbeiter-Account,
+                    // anstatt den gemeinsamen Filial-Aushang-Key doppelt in die Tabelle einzufügen!
+                    const neuerMitarbeiterKeyCode = window.keyManager.generiereSicherenKey();
+
                     const { error } = await window.supabaseVerbindung.client
                         .from('lizenz_schluessel')
                         .insert([{
-                            schluessel_code: temporaererLizenzSpeicher.schluessel_code,
+                            schluessel_code: neuerMitarbeiterKeyCode,
                             bezeichnung: name,
                             rolle: 'Mitarbeiter',
                             filiale_id: temporaererLizenzSpeicher.filiale_id,
-                            ist_einmalig: true,
+                            ist_einmalig: true, // Markiert als eingelöster Mitarbeiter-Account
                             benutzt: true,
                             personalnummer: personalnummer,
                             pin: pin,
@@ -555,7 +556,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const aktuellerCode = maKey.schluessel_code;
             keyAnzeige.textContent = aktuellerCode;
 
-            // Magische URL mit automatischem Key-Parameter für den QR-Code bauen
             const basisUrl = window.location.origin + window.location.pathname;
             const magischeUrl = `${basisUrl}?key=${encodeURIComponent(aktuellerCode)}`;
             const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(magischeUrl)}`;
