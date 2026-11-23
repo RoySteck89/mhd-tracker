@@ -1,11 +1,12 @@
 /* ==========================================================================
-   MASTER-ADMIN DASHBOARD (SAUBER GETRENNT VON CSS)
+   MASTER-ADMIN DASHBOARD (GEKOPPELT AN DEN KEY-MANAGER)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
-    const adminTabBtn = document.getElementById('nav-btn-admin');
-    const viewSwitcher = document.getElementById('admin-view-switcher');
     const erstellenBtn = document.getElementById('schaltflaeche-key-erstellen');
+    const schluesselTypSelect = document.getElementById('admin-schluessel-typ');
+    const filialeDropdownGruppe = document.getElementById('admin-filiale-dropdown-gruppe');
+    const filialeDropdownSelect = document.getElementById('admin-schluessel-filiale');
     const schluesselListeBehaelter = document.getElementById('behaelter-schluessel-liste');
     
     const filialeErstellenBtn = document.getElementById('schaltflaeche-filiale-erstellen');
@@ -14,6 +15,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const subtabButtons = document.querySelectorAll('.admin-subtab-btn');
     const subtabInhalte = document.querySelectorAll('.admin-subtab-inhalt');
+
+    // Dropdown nur einblenden, wenn "Mitarbeiter" ausgewählt ist
+    if (schluesselTypSelect && filialeDropdownGruppe) {
+        schluesselTypSelect.addEventListener('change', () => {
+            if (schluesselTypSelect.value === 'Mitarbeiter') {
+                filialeDropdownGruppe.classList.remove('ausblenden');
+                filialDropdownBefuellen();
+            } else {
+                filialeDropdownGruppe.classList.add('ausblenden');
+                if (filialeDropdownSelect) filialeDropdownSelect.value = '';
+            }
+        });
+    }
+
+    async function filialDropdownBefuellen() {
+        if (!window.supabaseVerbindung || !filialeDropdownSelect) return;
+        const filialen = await window.supabaseVerbindung.datenAbrufen('filialen');
+        
+        filialeDropdownSelect.innerHTML = '<option value="">-- Bitte Filiale wählen --</option>';
+        if (filialen && filialen.length > 0) {
+            filialen.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.filial_code || f.name;
+                opt.textContent = `${f.name} (${f.filial_code || ''})`;
+                filialeDropdownSelect.appendChild(opt);
+            });
+        }
+    }
 
     subtabButtons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -32,16 +61,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const zielElement = document.getElementById(zielId);
             if (zielElement) zielElement.style.display = 'block';
 
-            if (zielId === 'subtab-keys') schluesselLaden();
+            if (zielId === 'subtab-keys') {
+                schluesselLaden();
+                filialDropdownBefuellen();
+            }
             if (zielId === 'subtab-filialen') filialenLaden();
             if (zielId === 'subtab-logbuch') logbuchLaden();
         });
     });
-
-    function generiereSicherenKey() {
-        const block = () => Math.floor(1000 + Math.random() * 9000);
-        return `KIK-${block()}-${block()}-${block()}`;
-    }
 
     async function schluesselLaden() {
         if (!window.supabaseVerbindung || !schluesselListeBehaelter) return;
@@ -57,8 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         schluesselListeBehaelter.innerHTML = '';
         daten.forEach(item => {
+            const typBadge = item.ist_einmalig ? 'Einmal-Key' : 'Dauer-Key / Aktiv';
             const badgeClass = item.ist_einmalig && item.benutzt ? 'badge-status badge-inaktiv' : 'badge-status badge-aktiv';
-            const badgeText = item.ist_einmalig && item.benutzt ? 'Benutzt' : 'Frei';
 
             const element = document.createElement('div');
             element.className = 'liste-karte';
@@ -69,10 +96,10 @@ document.addEventListener('DOMContentLoaded', () => {
             element.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div class="liste-karte-titel" style="font-family: monospace; font-size: 1rem;">${item.schluessel_code}</div>
-                    <div><span class="${badgeClass}">${badgeText}</span></div>
+                    <div><span class="${badgeClass}">${typBadge}</span></div>
                 </div>
                 <div class="liste-karte-untertitel">${item.bezeichnung} (${item.rolle})</div>
-                <div style="font-size: 0.75rem; color: #6C757D;">Filiale: ${item.filiale_id || 'Flexibel / Ohne Bindung'}</div>
+                <div style="font-size: 0.75rem; color: #6C757D;">Filiale: ${item.filiale_id || 'Ohne Bindung (wird bei Reg. gesetzt)'}</div>
                 <div style="display: flex; gap: 8px; margin-top: 4px; border-top: 1px solid #f1f3f5; padding-top: 8px;">
                     <button class="btn-aktions-bearbeiten btn-kopieren" data-code="${item.schluessel_code}" style="flex: 1;">📋 Kopieren</button>
                     <button class="btn-aktions-loeschen btn-loeschen" data-id="${item.id}">🗑️ Löschen</button>
@@ -103,35 +130,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (erstellenBtn) {
         erstellenBtn.addEventListener('click', async () => {
-            const rolle = document.getElementById('admin-schluessel-typ').value;
+            const rolle = schluesselTypSelect.value;
             const bezeichnung = document.getElementById('admin-schluessel-bezeichnung').value.trim();
-            const filialeId = document.getElementById('admin-schluessel-filiale').value.trim();
+            const filialeId = filialeDropdownSelect ? filialeDropdownSelect.value.trim() : '';
 
             if (!bezeichnung) {
                 alert('Bitte gib eine Bezeichnung oder den Inhaber für den Schlüssel ein.');
                 return;
             }
 
-            const neuerSchluesselCode = generiereSicherenKey();
+            if (rolle === 'Mitarbeiter' && !filialeId) {
+                alert('Für einen Mitarbeiter-Notfall-Key muss zwingend eine Filiale ausgewählt werden!');
+                return;
+            }
 
             try {
-                const { error } = await window.supabaseVerbindung.client
-                    .from('lizenz_schluessel')
-                    .insert([{
-                        schluessel_code: neuerSchluesselCode,
-                        bezeichnung: bezeichnung,
-                        rolle: rolle,
-                        filiale_id: filialeId || '',
-                        ist_einmalig: true,
-                        benutzt: false
-                    }]);
+                if (!window.keyManager) throw new Error('KeyManager nicht geladen.');
 
-                if (error) throw error;
+                const erstellterKey = await window.keyManager.erstelleKey({
+                    rolle: rolle,
+                    bezeichnung: bezeichnung,
+                    filialeId: rolle === 'Mitarbeiter' ? filialeId : '',
+                    istEinmalig: true
+                });
 
-                alert(`Erfolgreich generiert!\nSchlüssel: ${neuerSchluesselCode}`);
+                alert(`Einmal-Key erfolgreich generiert!\nSchlüssel: ${erstellterKey.schluessel_code}`);
                 document.getElementById('admin-schluessel-bezeichnung').value = '';
-                document.getElementById('admin-schluessel-filiale').value = '';
+                if (filialeDropdownSelect) filialeDropdownSelect.value = '';
                 schluesselLaden();
+                adminStartseiteLaden();
 
             } catch (err) {
                 alert('Fehler: ' + err.message);
@@ -153,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         filialenListeBehaelter.innerHTML = '';
         filialen.forEach(item => {
-            const zugewiesenerKey = schluessel.find(k => k.filiale_id === item.filial_code || k.filiale_id == item.id);
+            const zugewiesenerKey = schluessel.find(k => (k.filiale_id === item.filial_code || k.filiale_id == item.id) && k.rolle === 'Teamleitung');
             const verantwortlicher = zugewiesenerKey ? zugewiesenerKey.bezeichnung : 'Noch kein Teamleiter zugewiesen';
 
             const element = document.createElement('div');
@@ -202,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('admin-neue-filiale-name').value = '';
                 document.getElementById('admin-neue-filiale-code').value = '';
                 filialenLaden();
+                filialDropdownBefuellen();
             } catch (err) {
                 alert('Fehler beim Anlegen: ' + err.message);
             }
@@ -213,23 +241,23 @@ document.addEventListener('DOMContentLoaded', () => {
         logbuchListeBehaelter.innerHTML = '<div style="padding: 12px; text-align: center; color: #6C757D;">Lade Logbuch...</div>';
 
         const daten = await window.supabaseVerbindung.datenAbrufen('lizenz_schluessel');
-        const benutzteKeys = daten.filter(k => k.benutzt);
+        const aktiveNutzer = daten.filter(k => k.benutzt && k.rolle !== 'Master-Admin');
 
-        if (benutzteKeys.length === 0) {
-            logbuchListeBehaelter.innerHTML = '<div class="liste-karte" style="justify-content: center; color: #6C757D;">Bisher wurden keine Einmalkeys eingelöst.</div>';
+        if (aktiveNutzer.length === 0) {
+            logbuchListeBehaelter.innerHTML = '<div class="liste-karte" style="justify-content: center; color: #6C757D;">Bisher wurden keine Benutzer registriert.</div>';
             return;
         }
 
         logbuchListeBehaelter.innerHTML = '';
-        benutzteKeys.forEach(item => {
+        aktiveNutzer.forEach(item => {
             const element = document.createElement('div');
             element.className = 'liste-karte';
             element.innerHTML = `
                 <div>
-                    <div class="liste-karte-titel" style="font-family: monospace;">${item.schluessel_code}</div>
-                    <div class="liste-karte-untertitel">Eingelöst von: ${item.bezeichnung} (${item.rolle})</div>
+                    <div class="liste-karte-titel">${item.bezeichnung} (${item.rolle})</div>
+                    <div class="liste-karte-untertitel">Pers.-Nr.: ${item.personalnummer || '---'} | Filiale: ${item.filiale_id || 'Bezirk/Zentrale'}</div>
                 </div>
-                <span class="badge-status badge-aktiv">Eingelöst ✓</span>
+                <span class="badge-status badge-aktiv">Registriert ✓</span>
             `;
             logbuchListeBehaelter.appendChild(element);
         });
@@ -257,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const leitungKeys = schluessel.filter(k => k.rolle === 'Bezirksleitung' || k.rolle === 'Teamleitung');
                 
                 if (leitungKeys.length === 0) {
-                    bezirkeContainer.innerHTML = '<div class="liste-karte" style="justify-content: center; color: #6C757D;">Keine Bezirks-/Teamleiter-Keys aktiv.</div>';
+                    bezirkeContainer.innerHTML = '<div class="liste-karte" style="justify-content: center; color: #6C757D;">Keine Bezirks-/Teamleiter aktiv.</div>';
                 } else {
                     leitungKeys.forEach(item => {
                         const el = document.createElement('div');
@@ -268,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span class="liste-karte-titel">${item.bezeichnung}</span>
                                 <span class="liste-karte-untertitel">Rolle: ${item.rolle}</span>
                             </div>
-                            <span class="${badgeClass}">${item.benutzt ? 'Aktiv' : 'Ungelöst'}</span>
+                            <span class="${badgeClass}">${item.benutzt ? 'Aktiv' : 'Offener Einmal-Key'}</span>
                         `;
                         bezirkeContainer.appendChild(el);
                     });
@@ -281,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     filialenContainer.innerHTML = '<div class="liste-karte" style="justify-content: center; color: #6C757D;">Keine Filialen im System.</div>';
                 } else {
                     filialen.forEach(item => {
-                        const zugewiesenerKey = schluessel.find(k => k.filiale_id === item.filial_code || k.filiale_id == item.id);
+                        const zugewiesenerKey = schluessel.find(k => (k.filiale_id === item.filial_code || k.filiale_id == item.id) && k.rolle === 'Teamleitung');
                         const verantwortlicher = zugewiesenerKey ? zugewiesenerKey.bezeichnung : 'Offen';
 
                         const el = document.createElement('div');
@@ -302,16 +330,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Sofort beim Laden des Scripts einmalig ausführen
     adminStartseiteLaden();
+    filialDropdownBefuellen();
 
     const adminAnsichtTab = document.querySelector('[data-ziel="ansicht-admin-dashboard"]');
     if (adminAnsichtTab) {
         adminAnsichtTab.addEventListener('click', () => {
             schluesselLaden();
             adminStartseiteLaden();
+            filialDropdownBefuellen();
         });
     }
-
-    console.log('Admin-Dashboard geladen.');
 });

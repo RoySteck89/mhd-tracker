@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SCANNER-, SPEICHER- & FILIAL-ARTIKEL-LOGIK (INKL. LOGIN-SCHUTZ & KATEGORIE)
+   SCANNER-, SPEICHER- & FILIAL-ARTIKEL-LOGIK (INKL. DATUMS-FORMATIERUNG TT.MM.JJ)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -28,8 +28,39 @@ document.addEventListener('DOMContentLoaded', () => {
         barcodeInput.setAttribute('inputmode', 'numeric');
     }
 
+    // MHD-Eingabe initialisieren (Passwort-Manager blockieren & TT.MM.JJ Format)
     if (mhdInput) {
-        mhdInput.value = new Date().toISOString().split('T')[0];
+        mhdInput.setAttribute('autocomplete', 'off');
+        mhdInput.setAttribute('autocapitalize', 'off');
+        mhdInput.setAttribute('spellcheck', 'false');
+        mhdInput.setAttribute('data-lpignore', 'true');
+        mhdInput.setAttribute('inputmode', 'numeric');
+        mhdInput.setAttribute('maxlength', '8');
+
+        // Heutiges Datum als TT.MM.JJ vorbesetzen (z.B. "23.11.26")
+        const heute = new Date();
+        const tag = String(heute.getDate()).padStart(2, '0');
+        const monat = String(heute.getMonth() + 1).padStart(2, '0');
+        const jahr = String(heute.getFullYear()).slice(-2);
+        mhdInput.value = `${tag}.${monat}.${jahr}`;
+
+        // Automatische Punkt-Formatierung während der Eingabe (z.B. "120527" -> "12.05.27")
+        mhdInput.addEventListener('input', (e) => {
+            let wert = e.target.value.replace(/\D/g, '');
+            if (wert.length > 6) wert = wert.slice(0, 6);
+
+            let formatiert = '';
+            if (wert.length > 0) {
+                formatiert = wert.substring(0, 2);
+            }
+            if (wert.length >= 3) {
+                formatiert += '.' + wert.substring(2, 4);
+            }
+            if (wert.length >= 5) {
+                formatiert += '.' + wert.substring(4, 6);
+            }
+            e.target.value = formatiert;
+        });
     }
 
     if (scanButton) {
@@ -158,16 +189,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const barcode = barcodeInput ? barcodeInput.value.trim() : '';
-            const mhdDatum = mhdInput ? mhdInput.value : '';
+            const mhdRoh = mhdInput ? mhdInput.value.trim() : '';
 
             if (!barcode) {
                 alert('Bitte zuerst einen Barcode scannen oder eingeben.');
                 return;
             }
 
-            if (!mhdDatum) {
-                alert('Bitte wähle ein gültiges MHD aus.');
+            if (!mhdRoh || mhdRoh.length < 8) {
+                alert('Bitte gib ein gültiges MHD im Format TT.MM.JJ ein.');
                 return;
+            }
+
+            // Umwandlung von TT.MM.JJ (z.B. "12.05.27") in das Datenbankformat JJJJ-MM-TT ("2027-05-12")
+            let mhdDatum = mhdRoh;
+            if (mhdRoh.includes('.')) {
+                const teile = mhdRoh.split('.');
+                if (teile.length === 3 && teile[2].length === 2) {
+                    const tag = teile[0];
+                    const monat = teile[1];
+                    const jahr = '20' + teile[2];
+                    mhdDatum = `${jahr}-${monat}-${tag}`;
+                }
             }
 
             await datenInSupabaseSpeichern(barcode, mhdDatum);
@@ -269,10 +312,8 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('✅ MHD-Eintrag erfolgreich gespeichert!');
             if (barcodeInput) barcodeInput.value = '';
             
-            // Aktive Filialartikel aktualisieren
             aktiveFilialArtikelLaden();
 
-            // Auch die Artikelliste im Hintergrund sofort aktualisieren, damit neue Artikel sofort da sind
             if (typeof window.artikelLaden === 'function') {
                 window.artikelLaden();
             }

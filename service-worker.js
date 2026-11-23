@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mhd-scanner-v2';
+const CACHE_NAME = 'mhd-scanner-v3';
 const ASSETS_TO_CACHE = [
   './index.html',
   './css/designs.css',
@@ -8,6 +8,7 @@ const ASSETS_TO_CACHE = [
   './js/artikel-suche.js',
   './js/mitarbeiter-profil.js',
   './js/app-steuerung.js',
+  './js/key-manager.js',
   './js/auth.js',
   './js/admin-dashboard.js',
   './js/bezirksleitung-dashboard.js',

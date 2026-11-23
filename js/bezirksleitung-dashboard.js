@@ -1,5 +1,5 @@
 /* ==========================================================================
-   BEZIRKSLEITUNG (BL) STEUERUNGSZENTRALE (SICHER MIT SESSION-STORAGE)
+   BEZIRKSLEITUNG (BL) STEUERUNGSZENTRALE (GEKOPPELT AN DEN KEY-MANAGER)
    ========================================================================== */
 
 async function blFilialenLaden() {
@@ -19,7 +19,7 @@ async function blFilialenLaden() {
 
         listeBehaelter.innerHTML = '';
         filialen.forEach(item => {
-            const zugewiesenerKey = schluessel.find(k => k.filiale_id === item.filial_code || k.filiale_id == item.id);
+            const zugewiesenerKey = schluessel.find(k => (k.filiale_id === item.filial_code || k.filiale_id == item.id) && k.rolle === 'Teamleitung');
             const verantwortlicher = zugewiesenerKey ? zugewiesenerKey.bezeichnung : 'Noch nicht zugeordnet';
 
             const el = document.createElement('div');
@@ -27,7 +27,7 @@ async function blFilialenLaden() {
             el.innerHTML = `
                 <div>
                     <div class="liste-karte-titel">${item.name} <span style="font-size: 0.75rem; color: #6C757D;">(${item.filial_code || 'ID: ' + item.id})</span></div>
-                    <div class="liste-karte-untertitel">Verknüpft mit: <strong>${verantwortlicher}</strong></div>
+                    <div class="liste-karte-untertitel">TL: <strong>${verantwortlicher}</strong></div>
                 </div>
                 <button class="btn-aktions-loeschen btn-bl-filiale-loeschen" data-id="${item.id}">🗑️ Löschen</button>
             `;
@@ -54,26 +54,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const blKeyErstellenBtn = document.getElementById('schaltflaeche-bl-key-erstellen');
     if (blKeyErstellenBtn) {
         blKeyErstellenBtn.addEventListener('click', async () => {
-            const block = () => Math.floor(1000 + Math.random() * 9000);
-            const neuerKey = `KIK-${block()}-${block()}-${block()}`;
-
             try {
-                const { error } = await window.supabaseVerbindung.client
-                    .from('lizenz_schluessel')
-                    .insert([{
-                        schluessel_code: neuerKey,
-                        bezeichnung: 'Offen (Teamleitung)',
-                        rolle: 'Teamleitung',
-                        filiale_id: '',
-                        ist_einmalig: true,
-                        benutzt: false
-                    }]);
+                if (!window.keyManager) throw new Error('KeyManager nicht bereit.');
 
-                if (error) throw error;
+                const session = JSON.parse(sessionStorage.getItem('kik_app_lizenz') || '{}');
+                const bezirkName = session.name || 'Bezirk';
 
-                navigator.clipboard.writeText(neuerKey);
+                // Einmal-Key für Teamleitung erstellen und automatisch dem Bezirk zuweisen
+                const erstellterKey = await window.keyManager.erstelleKey({
+                    rolle: 'Teamleitung',
+                    bezeichnung: `Teamleitung (Bezirk: ${bezirkName})`,
+                    filialeId: '', // Filiale wird von der TL bei Registrierung selbst benannt
+                    istEinmalig: true
+                });
 
-                alert(`Teamleiter-Key erfolgreich erstellt & kopiert!\n\nSchlüssel: ${neuerKey}\n\nDieser Code wurde in deine Zwischenablage kopiert.`);
+                navigator.clipboard.writeText(erstellterKey.schluessel_code);
+
+                alert(`Teamleiter-Einmal-Key für Bezirk "${bezirkName}" erstellt & kopiert!\n\nSchlüssel: ${erstellterKey.schluessel_code}\n\nDieser Code wurde in deine Zwischenablage kopiert.`);
                 blFilialenLaden();
             } catch (err) {
                 alert('Fehler beim Erstellen des Keys: ' + err.message);

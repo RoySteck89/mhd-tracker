@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LIZENZ- & AKTIVIERUNGSLOGIK (SICHERER LOGIN-ZWANG & SESSION-STORAGE)
+   LIZENZ- & AKTIVIERUNGSLOGIK (ANBINDUNG AN DEN KEY-MANAGER)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -150,7 +150,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function pruefeAktivierung() {
         localStorage.removeItem('kik_app_lizenz');
-
         const gespeicherteLizenz = sessionStorage.getItem('kik_app_lizenz');
 
         if (!gespeicherteLizenz) {
@@ -170,38 +169,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // AKTIVIERUNG ÜBER DEN KEY-MANAGER PRÜFEN
     if (btnAktivieren) {
         btnAktivieren.addEventListener('click', async () => {
-            const schluessel = eingabeSchluessel ? eingabeSchluessel.value.trim() : '';
+            const schluesselCode = eingabeSchluessel ? eingabeSchluessel.value.trim() : '';
 
-            if (!schluessel) {
+            if (!schluesselCode) {
                 alert('Bitte gib einen Aktivierungsschlüssel ein.');
                 return;
             }
 
             try {
-                if (!window.supabaseVerbindung || !window.supabaseVerbindung.client) {
-                    alert('Datenbankverbindung nicht bereit.');
+                if (!window.keyManager) {
+                    alert('KeyManager nicht bereit.');
                     return;
                 }
 
-                const { data, error } = await window.supabaseVerbindung.client
-                    .from('lizenz_schluessel')
-                    .select('*')
-                    .eq('schluessel_code', schluessel);
+                const ergebnis = await window.keyManager.pruefeKey(schluesselCode);
 
-                if (error || !data || data.length === 0) {
-                    alert('Ungültiger oder abgelaufener Aktivierungsschlüssel!');
+                if (!ergebnis.gueltig) {
+                    alert(ergebnis.fehler);
                     return;
                 }
 
-                const lizenz = data[0];
-
-                if (lizenz.ist_einmalig && lizenz.benutzt) {
-                    alert('Dieser Aktivierungsschlüssel wurde bereits verwendet!');
-                    return;
-                }
-
+                const lizenz = ergebnis.lizenz;
                 temporaererLizenzSpeicher = lizenz;
 
                 if (lizenz.rolle === 'Teamleitung') {
@@ -215,30 +206,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (lizenz.rolle === 'Mitarbeiter') {
+                    if (lizenz.ist_einmalig) {
+                        await window.keyManager.loeseEinmalKeyEin(lizenz.id);
+                    }
                     zeigeAuthSchritt(schrittMaReg);
                     return;
                 }
-
-                if (lizenz.ist_einmalig) {
-                    await window.supabaseVerbindung.client
-                        .from('lizenz_schluessel')
-                        .update({ benutzt: true })
-                        .eq('id', lizenz.id);
-                }
-
-                const lizenzInfo = {
-                    id: lizenz.id,
-                    name: lizenz.bezeichnung || 'Mitarbeiter',
-                    rolle: lizenz.rolle,
-                    filiale_id: lizenz.filiale_id || '',
-                    schluessel: lizenz.schluessel_code,
-                    thema: lizenz.thema || 'kik'
-                };
-
-                sessionStorage.setItem('kik_app_lizenz', JSON.stringify(lizenzInfo));
-                sessionStorage.removeItem('kik_aktive_ansicht');
-                alert(`App erfolgreich aktiviert als: ${lizenzInfo.rolle}`);
-                initialisiereAppSession(lizenzInfo);
 
             } catch (err) {
                 console.error('Aktivierungsfehler:', err);
@@ -269,9 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     .from('filialen')
                     .insert([{ name: filialEingabe, filial_code: filialEingabe }]);
 
-                const block = () => Math.floor(1000 + Math.random() * 9000);
-                const mitarbeiterKeyCode = `KIK-${block()}-${block()}-${block()}`;
-
+                const mitarbeiterKeyCode = window.keyManager.generiereSicherenKey();
                 await window.supabaseVerbindung.client
                     .from('lizenz_schluessel')
                     .insert([{
@@ -285,27 +256,32 @@ document.addEventListener('DOMContentLoaded', () => {
                     }]);
 
                 if (temporaererLizenzSpeicher && temporaererLizenzSpeicher.id) {
-                    await window.supabaseVerbindung.client
-                        .from('lizenz_schluessel')
-                        .update({ 
-                            benutzt: true, 
-                            filiale_id: filialEingabe,
-                            bezeichnung: name,
-                            personalnummer: personalnummer,
-                            pin: pin
-                        })
-                        .eq('id', temporaererLizenzSpeicher.id);
+                    await window.keyManager.loeseEinmalKeyEin(temporaererLizenzSpeicher.id);
                 }
 
+                const { error: tlInsertError } = await window.supabaseVerbindung.client
+                    .from('lizenz_schluessel')
+                    .insert([{
+                        schluessel_code: window.keyManager.generiereSicherenKey(),
+                        bezeichnung: name,
+                        rolle: 'Teamleitung',
+                        filiale_id: filialEingabe,
+                        ist_einmalig: false,
+                        benutzt: true,
+                        personalnummer: personalnummer,
+                        pin: pin,
+                        thema: 'kik'
+                    }]);
+
+                if (tlInsertError) throw tlInsertError;
+
                 const lizenzInfo = {
-                    id: temporaererLizenzSpeicher ? temporaererLizenzSpeicher.id : '',
                     name: name,
                     rolle: 'Teamleitung',
                     filiale_id: filialEingabe,
                     filialname: filialEingabe,
                     personalnummer: personalnummer,
                     pin: pin,
-                    schluessel: temporaererLizenzSpeicher ? temporaererLizenzSpeicher.schluessel_code : '',
                     thema: 'kik'
                 };
 
@@ -338,24 +314,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 if (temporaererLizenzSpeicher && temporaererLizenzSpeicher.id) {
-                    await window.supabaseVerbindung.client
-                        .from('lizenz_schluessel')
-                        .update({ 
-                            benutzt: true, 
-                            bezeichnung: name,
-                            personalnummer: personalnummer,
-                            pin: pin
-                        })
-                        .eq('id', temporaererLizenzSpeicher.id);
+                    await window.keyManager.loeseEinmalKeyEin(temporaererLizenzSpeicher.id);
                 }
 
+                const { error: blInsertError } = await window.supabaseVerbindung.client
+                    .from('lizenz_schluessel')
+                    .insert([{
+                        schluessel_code: window.keyManager.generiereSicherenKey(),
+                        bezeichnung: name,
+                        rolle: 'Bezirksleitung',
+                        ist_einmalig: false,
+                        benutzt: true,
+                        personalnummer: personalnummer,
+                        pin: pin,
+                        thema: 'kik'
+                    }]);
+
+                if (blInsertError) throw blInsertError;
+
                 const lizenzInfo = {
-                    id: temporaererLizenzSpeicher ? temporaererLizenzSpeicher.id : '',
                     name: name,
                     rolle: 'Bezirksleitung',
                     personalnummer: personalnummer,
                     pin: pin,
-                    schluessel: temporaererLizenzSpeicher ? temporaererLizenzSpeicher.schluessel_code : '',
                     thema: 'kik'
                 };
 
@@ -421,7 +402,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const lizenzInfo = {
-                    id: temporaererLizenzSpeicher ? temporaererLizenzSpeicher.id : '',
                     name: name,
                     rolle: 'Mitarbeiter',
                     filiale_id: temporaererLizenzSpeicher ? temporaererLizenzSpeicher.filiale_id : '',
@@ -503,10 +483,6 @@ document.addEventListener('DOMContentLoaded', () => {
             teamleiterMitarbeiterLaden(lizenz.filiale_id);
         }
 
-        if (lizenz.rolle === 'Bezirksleitung' && typeof blFilialenLaden === 'function') {
-            blFilialenLaden();
-        }
-
         if (lizenz.rolle === 'Master-Admin' && viewSwitcher) {
             viewSwitcher.classList.remove('ausblenden');
             viewSwitcher.style.display = 'inline-block';
@@ -526,6 +502,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function teamleiterDashboardLaden(filialId) {
         const keyAnzeige = document.getElementById('tl-mitarbeiter-key-anzeige');
         const kopierBtn = document.getElementById('schaltflaeche-tl-key-kopieren');
+        const qrBild = document.querySelector('.qr-code-bild');
+        const btnQrDrucken = document.getElementById('schaltflaeche-tl-qr-drucken');
         
         if (!keyAnzeige) return;
         keyAnzeige.textContent = 'Lade Code...';
@@ -552,8 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
             );
 
             if (!maKey) {
-                const block = () => Math.floor(1000 + Math.random() * 9000);
-                const neuerKeyCode = `KIK-${block()}-${block()}-${block()}`;
+                const neuerKeyCode = window.keyManager.generiereSicherenKey();
 
                 const { data: neuerKeyData, error: insertError } = await window.supabaseVerbindung.client
                     .from('lizenz_schluessel')
@@ -575,11 +552,57 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            keyAnzeige.textContent = maKey.schluessel_code;
+            const aktuellerCode = maKey.schluessel_code;
+            keyAnzeige.textContent = aktuellerCode;
+
+            // Magische URL mit automatischem Key-Parameter für den QR-Code bauen
+            const basisUrl = window.location.origin + window.location.pathname;
+            const magischeUrl = `${basisUrl}?key=${encodeURIComponent(aktuellerCode)}`;
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(magischeUrl)}`;
+
+            if (qrBild) {
+                qrBild.src = qrApiUrl;
+            }
+
             if (kopierBtn) {
                 kopierBtn.onclick = () => {
-                    navigator.clipboard.writeText(maKey.schluessel_code);
-                    alert(`Mitarbeiter-Key kopiert:\n${maKey.schluessel_code}`);
+                    navigator.clipboard.writeText(aktuellerCode);
+                    alert(`Mitarbeiter-Key kopiert:\n${aktuellerCode}`);
+                };
+            }
+
+            if (btnQrDrucken) {
+                btnQrDrucken.onclick = () => {
+                    const printWindow = window.open('', '_blank');
+                    printWindow.document.write(`
+                        <html>
+                        <head>
+                            <title>MHD Scanner-App - QR-Code Aushang (${sauberFilialId})</title>
+                            <style>
+                                body { font-family: Arial, sans-serif; text-align: center; padding: 50px; color: #0F766E; }
+                                h1 { font-size: 28px; margin-bottom: 10px; }
+                                p { font-size: 18px; color: #555; margin-bottom: 20px; }
+                                .key-hinweis { font-family: monospace; font-size: 20px; font-weight: bold; background: #F1F5F9; padding: 10px 20px; border-radius: 8px; display: inline-block; margin-bottom: 25px; color: #0F172A; }
+                                .qr-box { border: 3px dashed #0F766E; display: inline-block; padding: 25px; border-radius: 12px; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+                                img { width: 260px; height: 260px; }
+                                .footer { margin-top: 40px; font-size: 15px; font-weight: bold; color: #333; }
+                            </style>
+                        </head>
+                        <body>
+                            <h1>MHD Scanner-App – Filiale ${sauberFilialId}</h1>
+                            <p>Scanne diesen QR-Code mit deiner Smartphone-Kamera. Dein Filial-Key wird automatisch eingetragen!</p>
+                            <div class="key-hinweis">Filial-Key: ${aktuellerCode}</div><br>
+                            <div class="qr-box">
+                                <img src="${qrApiUrl}" alt="App QR-Code">
+                            </div>
+                            <div class="footer">Einfach mit Name, Personalnummer & PIN registrieren</div>
+                            <script>
+                                window.onload = function() { window.print(); };
+                            </script>
+                        </body>
+                        </html>
+                    `);
+                    printWindow.document.close();
                 };
             }
 
@@ -726,40 +749,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const btnQrDrucken = document.getElementById('schaltflaeche-tl-qr-drucken');
-    if (btnQrDrucken) {
-        btnQrDrucken.addEventListener('click', () => {
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <html>
-                <head>
-                    <title>MHD Scanner-App - QR-Code Aushang</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; color: #003366; }
-                        h1 { font-size: 28px; margin-bottom: 10px; }
-                        p { font-size: 18px; color: #555; margin-bottom: 30px; }
-                        .qr-box { border: 3px dashed #003366; display: inline-block; padding: 25px; border-radius: 12px; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-                        img { width: 260px; height: 260px; }
-                        .footer { margin-top: 40px; font-size: 15px; font-weight: bold; color: #333; }
-                    </style>
-                </head>
-                <body>
-                    <h1>MHD Scanner-App</h1>
-                    <p>Scanne diesen QR-Code mit deinem Smartphone, um die App im Browser zu öffnen.</p>
-                    <div class="qr-box">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=https://mhd-tracker-zeta.vercel.app/" alt="App QR-Code">
-                    </div>
-                    <div class="footer">KiK Filial-Management &bull; Einfach mit Personalnummer & PIN einloggen</div>
-                    <script>
-                        window.onload = function() { window.print(); };
-                    </script>
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
-        });
-    }
-
     function oberflaecheAnRolleAnpassen(rolle) {
         const scannerBereich = document.getElementById('bereich-mitarbeiter-scanner');
         const adminZentrale = document.getElementById('bereich-admin-zentrale');
@@ -792,7 +781,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (scannerBereich) { scannerBereich.style.display = 'block'; scannerBereich.classList.remove('ausblenden'); }
         }
 
-        // UNTERE NAVIGATION IMMER SICHER EINBLENDEN, WENN ANGEMELDET
         if (fussNavigation) {
             fussNavigation.style.display = 'flex';
         }

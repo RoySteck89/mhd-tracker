@@ -96,10 +96,11 @@
 							<input type="text" id="eingabe-barcode" placeholder="Barcode scannen oder eingeben..." autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" inputmode="numeric">
 						</div>
 
-                        <div class="formular-gruppe">
-                            <label for="eingabe-mhd">Mindesthaltbarkeitsdatum (MHD)</label>
-                            <input type="date" id="eingabe-mhd">
-                        </div>
+                        <!-- Kategorie-Auswahl & MHD-Erfassung -->
+						<div class="formular-gruppe">
+							<label for="eingabe-mhd">Mindesthaltbarkeitsdatum (MHD)</label>
+							<input type="text" id="eingabe-mhd" placeholder="TT.MM.JJ (z.B. 12.05.27)" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" inputmode="numeric" maxlength="8">
+						</div>
 
                         <!-- Kategorie-Auswahl bei der Erfassung -->
                         <div class="formular-gruppe">
@@ -248,22 +249,25 @@
 
                     <div id="subtab-keys" class="admin-subtab-inhalt">
                         <div class="erfassungs-karte karten-hintergrund">
-                            <div class="karten-titel-fett">Neuen Aktivierungsschlüssel generieren</div>
+                            <div class="karten-titel-fett">Neuen Einmal-Schlüssel generieren</div>
                             <div class="formular-gruppe">
                                 <label for="admin-schluessel-typ">Rolle / Berechtigung</label>
                                 <select id="admin-schluessel-typ" class="form-control form-input-standard">
                                     <option value="Bezirksleitung">Bezirksleitung (Einmal-Key)</option>
-                                    <option value="Teamleitung">Teamleitung (Flexibel / Filial-Erstellung)</option>
-                                    <option value="Mitarbeiter">Mitarbeiter (Standard Filiale)</option>
+                                    <option value="Teamleitung">Teamleitung (Einmal-Key / Filial-Erstellung)</option>
+                                    <option value="Mitarbeiter">Mitarbeiter (Notfall Einmal-Key)</option>
                                 </select>
                             </div>
                             <div class="formular-gruppe">
                                 <label for="admin-schluessel-bezeichnung">Bezeichnung / Inhaber</label>
-                                <input type="text" id="admin-schluessel-bezeichnung" class="form-input-standard" placeholder="z. B. Filiale Kempten / Herr Müller">
+                                <input type="text" id="admin-schluessel-bezeichnung" class="form-input-standard" placeholder="z. B. Bezirk Süd / Herr Müller">
                             </div>
-                            <div class="formular-gruppe">
-                                <label for="admin-schluessel-filiale">Filial-ID (optional bei Teamleitung)</label>
-                                <input type="text" id="admin-schluessel-filiale" class="form-input-standard" placeholder="z. B. Filiale-05 oder leer lassen">
+                            <!-- Pflicht-Dropdown nur für Mitarbeiter-Notfall-Key -->
+                            <div id="admin-filiale-dropdown-gruppe" class="formular-gruppe ausblenden">
+                                <label for="admin-schluessel-filiale">Filiale auswählen (Pflicht für Mitarbeiter)</label>
+                                <select id="admin-schluessel-filiale" class="form-control form-input-standard">
+                                    <option value="">-- Bitte Filiale wählen --</option>
+                                </select>
                             </div>
                             <button id="schaltflaeche-key-erstellen" class="schaltflaeche-gruen">
                                 ⚡ Einmalkey generieren
@@ -468,6 +472,7 @@
     <script src="js/artikel-suche.js"></script>
     <script src="js/mitarbeiter-profil.js"></script>
     <script src="js/app-steuerung.js"></script>
+	<script src="js/key-manager.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/admin-dashboard.js"></script>
 	<script src="js/bezirksleitung-dashboard.js"></script>
