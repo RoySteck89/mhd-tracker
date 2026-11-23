@@ -381,14 +381,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (temporaererLizenzSpeicher) {
-                    // WICHTIG: Generiert einen neuen, eindeutigen Key für den Mitarbeiter-Account,
-                    // statt den Aushang-Key doppelt in die Tabelle einzutragen![cite: 13]
-                    const neuerMitarbeiterKeyCode = window.keyManager.generiereSicherenKey();
+                    // WICHTIG: Generiert einen brandneuen, eindeutigen Schlüssel-Code für den Account,
+                    // damit der Filial-Aushang-Key nicht doppelt eingefügt wird und der Fehler verschwindet.
+                    const neuerPersönlicherCode = window.keyManager.generiereSicherenKey();
 
                     const { error } = await window.supabaseVerbindung.client
                         .from('lizenz_schluessel')
                         .insert([{
-                            schluessel_code: neuerMitarbeiterKeyCode,
+                            schluessel_code: neuerPersönlicherCode,
                             bezeichnung: name,
                             rolle: 'Mitarbeiter',
                             filiale_id: temporaererLizenzSpeicher.filiale_id,
