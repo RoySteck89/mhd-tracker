@@ -381,8 +381,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (temporaererLizenzSpeicher) {
-                    // WICHTIG: Wir erzeugen einen NEUEN, EINZIGARTIGEN Schlüssel-Code für den Mitarbeiter-Account,
-                    // anstatt den gemeinsamen Filial-Aushang-Key doppelt in die Tabelle einzufügen!
+                    // WICHTIG: Generiert einen neuen, eindeutigen Key für den Mitarbeiter-Account,
+                    // statt den Aushang-Key doppelt in die Tabelle einzutragen![cite: 13]
                     const neuerMitarbeiterKeyCode = window.keyManager.generiereSicherenKey();
 
                     const { error } = await window.supabaseVerbindung.client
@@ -392,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             bezeichnung: name,
                             rolle: 'Mitarbeiter',
                             filiale_id: temporaererLizenzSpeicher.filiale_id,
-                            ist_einmalig: true, // Markiert als eingelöster Mitarbeiter-Account
+                            ist_einmalig: true,
                             benutzt: true,
                             personalnummer: personalnummer,
                             pin: pin,
