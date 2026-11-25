@@ -40,10 +40,10 @@ body {
     flex-direction: column;
     gap: 10px;
     width: 100%;
-    background-color: #0F766E !important;
+    background-color: var(--app-header-bg) !important;
     color: #FFFFFF !important;
-    border-bottom: 1px solid #115E59 !important;
-    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.2);
+    border-bottom: 1px solid var(--app-primary-hover) !important;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
 }
 
 .header-titel {
@@ -132,11 +132,11 @@ body {
     transition: color 0.2s ease;
 }
 .nav-schaltflaeche:hover {
-    color: #0D9488 !important;
+    color: var(--app-primary) !important;
     background: none !important;
 }
 .nav-schaltflaeche.aktiv {
-    color: #0D9488 !important;
+    color: var(--app-primary) !important;
     font-weight: 700;
     background: none !important;
 }
@@ -167,7 +167,6 @@ body {
 .erfassungs-karte,
 .karten-bereich,
 .auth-karte,
-.admin-statistik-karte,
 .karten-hintergrund,
 .profil-stat-box,
 .profil-info-liste,
@@ -182,6 +181,20 @@ body {
     gap: 12px;
     width: 100%;
     box-shadow: 0 4px 12px rgba(13, 148, 136, 0.04);
+}
+
+/* --- SPEZIELL: Große Profil-Statistik-Karte passt sich der Theme-Farbe an --- */
+.admin-statistik-karte {
+    padding: 16px 18px;
+    background-color: var(--app-primary) !important;
+    border: 1px solid var(--app-primary-hover) !important;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.15);
+    color: #FFFFFF !important;
 }
 
 /* --- FORMULARE & INPUTS (Volle Breite, sauberes Design) --- */
@@ -203,7 +216,7 @@ select {
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 input:focus, select:focus {
-    border-color: #0D9488 !important;
+    border-color: var(--app-primary) !important;
     box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15) !important;
     background-color: #FFFFFF !important;
 }
@@ -221,7 +234,7 @@ button:not(.nav-schaltflaeche):not(.admin-subtab-btn) {
     justify-content: center;
     gap: 8px;
     text-align: center;
-    background-color: #0D9488 !important;
+    background-color: var(--app-primary) !important;
     color: #FFFFFF !important;
     border: none !important;
     border-radius: 8px;
@@ -230,7 +243,7 @@ button:not(.nav-schaltflaeche):not(.admin-subtab-btn) {
 }
 .schaltflaeche-primaer:hover, 
 button:not(.nav-schaltflaeche):not(.admin-subtab-btn):hover {
-    background-color: #0F766E !important;
+    background-color: var(--app-primary-hover) !important;
 }
 button:active {
     transform: scale(0.98);
@@ -252,4 +265,62 @@ button:active {
 }
 .schaltflaeche-gruen:hover {
     background-color: #059669 !important;
+}
+
+/* ==========================================================================
+   VOLLSTÄNDIGE PASTELL-FARBPALETTE
+   ========================================================================== */
+
+:root {
+    --app-primary: #0D9488;
+    --app-primary-hover: #0F766E;
+    --app-header-bg: #0F766E;
+}
+
+[data-theme="tuerkis"] {
+    --app-primary: #0D9488;
+    --app-primary-hover: #0F766E;
+    --app-header-bg: #0F766E;
+}
+
+[data-theme="pastellblau"] {
+    --app-primary: #3B82F6;
+    --app-primary-hover: #2563EB;
+    --app-header-bg: #2563EB;
+}
+
+[data-theme="pastellrot"] {
+    --app-primary: #E11D48;
+    --app-primary-hover: #BE123C;
+    --app-header-bg: #BE123C;
+}
+
+[data-theme="mintgruen"] {
+    --app-primary: #10B981;
+    --app-primary-hover: #059669;
+    --app-header-bg: #059669;
+}
+
+[data-theme="lavendel"] {
+    --app-primary: #8B5CF6;
+    --app-primary-hover: #7C3AED;
+    --app-header-bg: #7C3AED;
+}
+
+[data-theme="pfirsich"] {
+    --app-primary: #F97316;
+    --app-primary-hover: #EA580C;
+    --app-header-bg: #EA580C;
+}
+
+[data-theme="vanille"] {
+    --app-primary: #D97706;
+    --app-primary-hover: #B45309;
+    --app-header-bg: #B45309;
+}
+
+[data-theme="rose"] {
+    --app-primary: #EC4899;
+    --app-primary-hover: #DB2777;
+    --app-header-bg: #DB2777;
 }
