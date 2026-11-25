@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SCANNER-, SPEICHER- & LIVE-ARTIKEL-LOGIK (KORRIGIERT)
+   SCANNER-, SPEICHER- & LIVE-ARTIKEL-LOGIK (PERFEKTIONIERT)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Felder absolut strikt gegen Browser-Autofill und Passwort-Manager absichern
+    // Felder absolut strikt gegen Browser-Autofill / Passwortmanager absichern
     [barcodeInput, artikelNameInput, mhdInput].forEach(el => {
         if (el) {
             el.setAttribute('autocomplete', 'new-password');
@@ -33,44 +33,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // ZENTRALE LIVE-SUCHE BEI BARCODE-EINGABE ODER SCAN
+    async function sucheBarcodeInDatenbank(barcode) {
+        const saubererBarcode = barcode.trim();
+        if (saubererBarcode.length >= 8 && window.supabaseVerbindung && window.supabaseVerbindung.client) {
+            try {
+                const { data, error } = await window.supabaseVerbindung.client
+                    .from('artikel')
+                    .select('*')
+                    .eq('barcode', saubererBarcode)
+                    .limit(1);
+
+                if (!error && data && data.length > 0) {
+                    if (artikelNameInput) artikelNameInput.value = data[0].artikelname;
+                    if (kategorieSelect && data[0].kategorie) kategorieSelect.value = data[0].kategorie;
+                } else {
+                    if (artikelNameInput) artikelNameInput.value = ''; // Neuer Artikel -> Name bleibt frei zum Eintippen
+                }
+            } catch (err) {
+                console.error('Live-Suche Fehler:', err);
+            }
+        } else {
+            if (artikelNameInput) artikelNameInput.value = '';
+        }
+    }
+
     if (barcodeInput) {
         barcodeInput.setAttribute('inputmode', 'numeric');
         
-        // LIVE-SUCHE: Sobald Barcode eingegeben oder gescannt wird, in der DB nachschauen
-        barcodeInput.addEventListener('input', async () => {
-            const barcode = barcodeInput.value.trim();
-            if (barcode.length >= 8 && window.supabaseVerbindung && window.supabaseVerbindung.client) {
-                try {
-                    const { data, error } = await window.supabaseVerbindung.client
-                        .from('artikel')
-                        .select('*')
-                        .eq('barcode', barcode)
-                        .limit(1);
-
-                    if (!error && data && data.length > 0) {
-                        if (artikelNameInput) artikelNameInput.value = data[0].artikelname;
-                        if (kategorieSelect && data[0].kategorie) kategorieSelect.value = data[0].kategorie;
-                    } else {
-                        if (artikelNameInput) artikelNameInput.value = '';
-                    }
-                } catch (err) {
-                    console.error('Live-Suche Fehler:', err);
-                }
-            } else {
-                if (artikelNameInput) artikelNameInput.value = '';
-            }
+        // Lauscht auf jede Eingabe oder automatisches Einfügen
+        barcodeInput.addEventListener('input', () => {
+            sucheBarcodeInDatenbank(barcodeInput.value);
+        });
+        barcodeInput.addEventListener('change', () => {
+            sucheBarcodeInDatenbank(barcodeInput.value);
         });
     }
 
-    // MHD-Formatierung TT.MM.JJ während der Eingabe (Kein Überschreiben mit heutigem Datum!)
+    // MHD-Formatierung TT.MM.JJ während der Eingabe
     if (mhdInput) {
         mhdInput.setAttribute('inputmode', 'numeric');
         mhdInput.setAttribute('maxlength', '8');
-
-        // Feld beim Start bewusst leer lassen, damit man das echte MHD der Packung tippen muss
-        if (!mhdInput.value) {
-            mhdInput.value = '';
-        }
 
         mhdInput.addEventListener('input', (e) => {
             let wert = e.target.value.replace(/\D/g, '');
@@ -99,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const manuellerCode = prompt('Dein Browser unterstützt keinen direkten Kamera-Scan. Bitte Barcode manuell eingeben:');
             if (manuellerCode && barcodeInput) {
                 barcodeInput.value = manuellerCode.trim();
-                barcodeInput.dispatchEvent(new Event('input'));
+                sucheBarcodeInDatenbank(barcodeInput.value);
             }
             return;
         }
@@ -141,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (erfassterCode.length >= 8 && erfassterCode.length <= 25 && /^\d+$/.test(erfassterCode)) {
                             if (barcodeInput) {
                                 barcodeInput.value = erfassterCode;
-                                barcodeInput.dispatchEvent(new Event('input'));
+                                sucheBarcodeInDatenbank(erfassterCode);
                             }
                             scannerBeenden();
                         }
@@ -207,7 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Exakte Konvertierung von TT.MM.JJ zu JJJJ-MM-TT ohne automatische Fehlinterpretation
             let mhdDatum = mhdRoh;
             if (mhdRoh.includes('.')) {
                 const teile = mhdRoh.split('.');
@@ -323,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (barcodeInput) barcodeInput.value = '';
             if (artikelNameInput) artikelNameInput.value = '';
-            if (mhdInput) mhdInput.value = ''; // Feld leeren für den nächsten Scan
+            if (mhdInput) mhdInput.value = '';
             
             aktiveFilialArtikelLaden();
 
@@ -366,13 +368,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return heute >= vorlaufDatum;
             });
 
-            if (relevanteEintrage.length === 0) {
+            if (relevanteEintraege.length === 0) {
                 aktiveArtikelBehaelter.innerHTML = '<div class="liste-karte" style="justify-content: center; color: #6C757D;">Keine Artikel im Reduzierungs-Zeitraum (1 Monat Vorlauf).</div>';
                 return;
             }
 
             aktiveArtikelBehaelter.innerHTML = '';
-            relevanteEintraege.forEach(item => {
+            relevanteEintrage.forEach(item => {
                 const artikelName = item.artikel ? item.artikel.artikelname : `Barcode: ${item.barcode}`;
                 
                 let deutschesDatum = item.mhd_datum;
@@ -425,6 +427,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.aktiveFilialArtikelLaden = aktiveFilialArtikelLaden;
+
+    // AUTOMATISCHES NEULADEN BEI TAB-WECHSEL (Behebt das Problem, dass sich Ansichten nicht aktualisieren)
+    document.querySelectorAll('.nav-schaltflaeche').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setTimeout(() => {
+                if (typeof aktiveFilialArtikelLaden === 'function') aktiveFilialArtikelLaden();
+                if (typeof window.artikelLaden === 'function') window.artikelLaden();
+            }, 100);
+        });
+    });
 
     if (istAngemeldet()) {
         aktiveFilialArtikelLaden();

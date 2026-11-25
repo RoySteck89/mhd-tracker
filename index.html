@@ -5,66 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MHD Scanner-App PWA</title>
 
-    <!-- PWA Manifest & Theme-Color -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0F766E">
 	
-    <!-- Supabase JS Client CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <!-- Externe CSS-Datei (Modernes Türkis Design) -->
 	<link rel="stylesheet" href="css/designs.css">
 </head>
 <body>
 
-    <!-- PROFESSIONELLER SPLASH SCREEN (Elegantes Intro beim App-Start) -->
     <div id="app-splash-screen" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(135deg, #0F766E 0%, #042F2C 100%); z-index: 999999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.5s; color: white;">
-        
-        <!-- App-Icon im modernen Master-Design mit Schatten & abgerundeten Ecken -->
-        <div style="width: 88px; height: 88px; background: #FFFFFF; border-radius: 22px; display: flex; align-items: center; justify-content: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3); animation: splashIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);">
+        <div style="width: 88px; height: 88px; background: #FFFFFF; border-radius: 22px; display: flex; align-items: center; justify-content: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
             <span style="font-size: 2.5rem;">📦</span>
         </div>
-        
-        <!-- App-Titel & Untertitel -->
-        <div style="text-align: center; animation: fadeInText 0.8s ease;">
-            <div style="font-size: 1.4rem; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 6px; color: #FFFFFF;">MHD Scanner-App</div>
-            <div style="font-size: 0.8rem; color: #99F6E4; font-weight: 500; letter-spacing: 0.8px; text-transform: uppercase;">Frische- & Bestandsmanagement</div>
-        </div>
-
-        <!-- Moderner, cleaner Ladebalken -->
-        <div style="width: 120px; height: 3px; background: rgba(255,255,255,0.2); border-radius: 2px; overflow: hidden; margin-top: 10px;">
-            <div style="width: 100%; height: 100%; background: #34D399; border-radius: 2px; animation: ladeBalken 1.2s infinite ease-in-out; transform-origin: left;"></div>
+        <div style="text-align: center;">
+            <div style="font-size: 1.4rem; font-weight: 700; margin-bottom: 6px; color: #FFFFFF;">MHD Scanner-App</div>
+            <div style="font-size: 0.8rem; color: #99F6E4; font-weight: 500; text-transform: uppercase;">Frische- & Bestandsmanagement</div>
         </div>
     </div>
 
-    <style>
-    @keyframes splashIn {
-        0% { transform: scale(0.6); opacity: 0; }
-        100% { transform: scale(1); opacity: 1; }
-    }
-    @keyframes fadeInText {
-        0% { transform: translateY(10px); opacity: 0; }
-        100% { transform: translateY(0); opacity: 1; }
-    }
-    @keyframes ladeBalken {
-        0% { transform: scaleX(0); }
-        50% { transform: scaleX(0.7); }
-        100% { transform: scaleX(1); transform-origin: right; }
-    }
-    </style>
-
-    <!-- Haupt-Container der App -->
     <div id="app-container">
-
-        <!-- Kopfzeile: Status & Benutzer-Info -->
         <header class="app-header">
             <div class="header-titel">MHD Scanner-App</div>
-    
-            <!-- Benutzer-Info & Master-Admin View Switcher -->
             <div class="header-rechte-seite">
                 <div id="benutzer-anzeige" class="benutzer-badge">Lade Profil...</div>
-        
-                <!-- Wird nur eingeblendet, wenn rolle === 'Master-Admin' -->
                 <select id="admin-view-switcher" class="view-switcher ausblenden">
                     <option value="Master-Admin">👑 Modus: Master-Admin</option>
                     <option value="Bezirksleitung">🏢 Modus: Bezirksleitung (BL)</option>
@@ -74,13 +37,8 @@
             </div>
         </header>
 
-        <!-- Haupt-Inhaltsbereich (Dynamischer Ansichten-Wechsel) -->
         <main id="haupt-inhalt">
-
-            <!-- ANSICHT 1: Startseite / Tagesgeschäft & Zentralen -->
             <section id="ansicht-startseite" class="app-ansicht aktiv">
-
-                <!-- BEREICH FÜR MITARBEITER (Scanner & MHD-Erfassung) -->
                 <div id="bereich-mitarbeiter-scanner" class="app-bereich">
                     <div class="karten-bereich">
                         <button id="schaltflaeche-scannen" class="schaltflaeche-primaer">
@@ -88,30 +46,28 @@
                         </button>
                     </div>
                     
-                    <div id="mhd-erfassungs-bereich" class="erfassungs-karte" data-form-type="other">
+                    <div id="mhd-erfassungs-bereich" class="erfassungs-karte">
                         <div class="bereichs-titel">Neuen MHD-Eintrag erfassen</div>
         
                         <div class="formular-gruppe">
 							<label for="eingabe-barcode">Barcode / EAN</label>
-							<input type="text" id="eingabe-barcode" name="scan_barcode_code" placeholder="Barcode scannen oder eingeben..." autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" inputmode="numeric">
+							<input type="text" id="eingabe-barcode" name="scan_barcode_code" placeholder="Barcode scannen oder eingeben..." autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" inputmode="numeric">
 						</div>
 
-                        <!-- Artikelname mit Live-Erkennung -->
+                        <!-- Direktes Artikelname-Feld (Kein Popup mehr nötig!) -->
                         <div class="formular-gruppe">
                             <label for="eingabe-artikelname">Artikelname</label>
-                            <input type="text" id="eingabe-artikelname" name="scan_article_title" placeholder="Wird automatisch erkannt oder neu eingegeben..." autocomplete="off" autocapitalize="words" spellcheck="false" data-lpignore="true" data-form-type="other">
+                            <input type="text" id="eingabe-artikelname" name="scan_article_title" placeholder="Artikelbezeichnung (wird geladen oder frei tippbar)..." autocomplete="off" autocapitalize="words" spellcheck="false" data-lpignore="true">
                         </div>
 
-                        <!-- MHD-Erfassung -->
 						<div class="formular-gruppe">
 							<label for="eingabe-mhd">Mindesthaltbarkeitsdatum (MHD)</label>
-							<input type="text" id="eingabe-mhd" name="scan_expiry_date" placeholder="TT.MM.JJ (z.B. 12.05.27)" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" inputmode="numeric" maxlength="8">
+							<input type="text" id="eingabe-mhd" name="scan_expiry_date" placeholder="TT.MM.JJ (z.B. 07.05.27)" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" inputmode="numeric" maxlength="8">
 						</div>
 
-                        <!-- Kategorie-Auswahl bei der Erfassung -->
                         <div class="formular-gruppe">
                             <label for="eingabe-kategorie">Warengruppe / Kategorie</label>
-                            <select id="eingabe-kategorie" autocomplete="off">
+                            <select id="eingabe-kategorie">
                                 <option value="Süßigkeiten">🍫 Süßigkeiten</option>
                                 <option value="Getränke">🥤 Getränke</option>
                                 <option value="Tierfutter">🐾 Tierfutter</option>
@@ -127,80 +83,14 @@
                     <div id="behälter-aktive-artikel"></div>
                 </div>
 
-                <!-- BEREICH FÜR MASTER-ADMIN -->
-                <div id="bereich-admin-zentrale" class="app-bereich ausblenden">
-                    <div class="admin-statistik-grid">
-                        <div class="admin-statistik-karte">
-                            <div id="admin-stat-filialen" class="admin-stat-wert">0</div>
-                            <div class="admin-stat-label">Aktive Filialen</div>
-                        </div>
-                        <div class="admin-statistik-karte">
-                            <div id="admin-stat-keys" class="admin-stat-wert gruen">0</div>
-                            <div class="admin-stat-label">Aktive Keys frei</div>
-                        </div>
-                    </div>
-                    <div class="bereichs-titel">🏢 Bezirke & Teamleiter</div>
-                    <div id="admin-schnell-bezirke" class="admin-schnell-liste"></div>
-                    <div class="bereichs-titel">🏬 Registrierte Filialen</div>
-                    <div id="admin-schnell-filialen" class="admin-schnell-liste"></div>
-                </div>
-
-                <!-- BEREICH FÜR BEZIRKSLEITUNG (BL-ZENTRALE) -->
-                <div id="bereich-bl-zentrale" class="app-bereich ausblenden">
-                    <div class="karten-bereich">
-                        <div class="bereichs-titel">🏢 Bezirksleitung - Steuerungszentrale</div>
-                        <div class="erfassungs-karte karten-hintergrund">
-                            <div class="karten-titel-fett">Neuen Teamleiter-Key per Klick erstellen</div>
-                            <p class="karten-untertitel-text">Generiere einen Einmalkode für einen Teamleiter zur Bezirkszuweisung.</p>
-                            <button id="schaltflaeche-bl-key-erstellen" class="schaltflaeche-gruen">
-                                ⚡ Filial-Key für Bezirk generieren
-                            </button>
-                        </div>
-                        <div class="bereichs-titel">🏬 Filialen in Ihrem Bezirk</div>
-                        <div id="behaelter-bl-filialen-liste" class="admin-schnell-liste"></div>
-                    </div>
-                </div>
-
-                <!-- BEREICH FÜR TEAMLEITUNG (TL-ZENTRALE / FILIAL-DASHBOARD) -->
-                <div id="bereich-teamleiter-zentrale" class="app-bereich ausblenden">
-                    <div class="karten-bereich">
-                        <div class="bereichs-titel">📋 Teamleitung - Filialzentrale</div>
-                        
-                        <div class="erfassungs-karte karten-hintergrund">
-                            <div class="karten-titel-fett">Mitarbeiter-Aktivierungscode für Ihre Filiale</div>
-                            <p class="karten-untertitel-text">Geben Sie diesen Code an Ihre Mitarbeiter weiter, damit sie sich bei der Erstanmeldung direkt Ihrer Filiale zuordnen können.</p>
-                            
-                            <div id="tl-mitarbeiter-key-anzeige" class="code-anzeige-box">
-                                Lade Code...
-                            </div>
-                            
-                            <button id="schaltflaeche-tl-key-kopieren" class="schaltflaeche-primaer">
-                                📋 Mitarbeiter-Key kopieren
-                            </button>
-                        </div>
-
-                        <!-- QR-CODE AUSHANG / DIREKTZUGRIFF FÜR MITARBEITER -->
-                        <div class="erfassungs-karte karten-hintergrund">
-                            <div class="karten-titel-fett">📱 App-Direktzugriff per QR-Code</div>
-                            <p class="karten-untertitel-text">Mitarbeiter können diesen QR-Code scannen, um die App sofort auf einem Ersatzgerät im Browser zu öffnen.</p>
-                            
-                            <div class="qr-code-zentriert">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://mhd-tracker-zeta.vercel.app/" alt="App QR-Code" class="qr-code-bild">
-                            </div>
-                            
-                            <button id="schaltflaeche-tl-qr-drucken" class="schaltflaeche-gruen">
-                                🖨️ QR-Code Aushang drucken / anzeigen
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
+                <!-- Weitere Admin/Zentralen-Bereiche -->
+                <div id="bereich-admin-zentrale" class="app-bereich ausblenden"></div>
+                <div id="bereich-bl-zentrale" class="app-bereich ausblenden"></div>
+                <div id="bereich-teamleiter-zentrale" class="app-bereich ausblenden"></div>
             </section>
 
-            <!-- ANSICHT 2: Minimalistische Artikelliste & Live-Suche (Inkl. Filter-Tabs) -->
             <section id="ansicht-suche" class="app-ansicht ausblenden">
                 <div class="such-bereich" style="display: flex; flex-direction: column; gap: 10px;">
-                    <!-- Filter-Tabs für die 3 Kategorien -->
                     <div class="admin-subtab-leiste" style="display: flex; gap: 6px;">
                         <button class="artikel-filter-btn aktiv" data-kategorie="alle" style="flex: 1; padding: 10px; font-size: 0.85rem; border-radius: 8px; border: 1px solid #0D9488; background: #0D9488; color: #FFF; font-weight: 600; cursor: pointer;">Alle</button>
                         <button class="artikel-filter-btn" data-kategorie="Süßigkeiten" style="flex: 1; padding: 10px; font-size: 0.85rem; border-radius: 8px; border: 1px solid #CBD5E1; background: #FFF; color: #0F172A; font-weight: 600; cursor: pointer;">🍫 Süßigkeiten</button>
@@ -213,12 +103,10 @@
                 <div id="behälter-such-ergebnisse"></div>
             </section>
 
-            <!-- ANSICHT 3: Mitarbeiter-Motivations-Profil -->
             <section id="ansicht-profil" class="app-ansicht ausblenden">
                 <div id="behälter-mitarbeiter-statistik"></div>
             </section>
 
-            <!-- ANSICHT 4: TEAMLEITER-MITARBEITER-VERWALTUNG -->
             <section id="ansicht-tl-mitarbeiter" class="app-ansicht ausblenden">
                 <div class="karten-bereich">
                     <div class="bereichs-titel">👥 Mitarbeiter-Verwaltung (Filiale)</div>
@@ -243,7 +131,6 @@
                 </div>
             </section>
 			
-            <!-- ANSICHT 5: MASTER-ADMIN DASHBOARD -->
             <section id="ansicht-admin-dashboard" class="app-ansicht ausblenden">
                 <div class="karten-bereich">
                     <div class="bereichs-titel">👑 Master-Admin Steuerzentrale</div>
@@ -268,7 +155,6 @@
                                 <label for="admin-schluessel-bezeichnung">Bezeichnung / Inhaber</label>
                                 <input type="text" id="admin-schluessel-bezeichnung" class="form-input-standard" placeholder="z. B. Bezirk Süd / Herr Müller">
                             </div>
-                            <!-- Pflicht-Dropdown nur für Mitarbeiter-Notfall-Key -->
                             <div id="admin-filiale-dropdown-gruppe" class="formular-gruppe ausblenden">
                                 <label for="admin-schluessel-filiale">Filiale auswählen (Pflicht für Mitarbeiter)</label>
                                 <select id="admin-schluessel-filiale" class="form-control form-input-standard">
@@ -309,14 +195,10 @@
                 </div>
             </section>
 			
-            <!-- AKTIVIERUNGS- / LOGIN-ANSICHT -->
             <div id="ansicht-aktivierung" class="app-ansicht auth-ansicht ausblenden">
-                
-                <!-- STANDARD-LOGIN PER PERSONALNUMMER & PIN (Schnell-Login) -->
                 <div id="auth-schritt-login" class="auth-karte">
                     <h2>MHD-Scanner Anmeldung</h2>
                     <p class="auth-hinweis">Gib deine Personalnummer und deine 4-stellige PIN ein, um dich auf diesem Gerät anzumelden.</p>
-                    
                     <div class="formular-gruppe">
                         <label for="login-persnr">Personalnummer (6-stellig)</label>
                         <input type="text" id="login-persnr" placeholder="z. B. 123456" maxlength="6" autocomplete="off">
@@ -325,17 +207,10 @@
                         <label for="login-pin">PIN (4-stellig)</label>
                         <input type="password" id="login-pin" placeholder="z. B. 1234" maxlength="4">
                     </div>
-
-                    <button type="button" id="schaltflaeche-login-absenden" class="schaltflaeche-primaer" style="margin-bottom: 12px;">
-                        🔓 Anmelden
-                    </button>
-
-                    <button type="button" id="schaltflaeche-zu-aktivierung" style="background: transparent; border: none; cursor: pointer; font-size: 0.85rem; width: 100%; padding: 6px; color: #0D9488;">
-                        ⚙️ Erstinbetriebnahme: Gerät mit Aktivierungsschlüssel einrichten
-                    </button>
+                    <button type="button" id="schaltflaeche-login-absenden" class="schaltflaeche-primaer" style="margin-bottom: 12px;">🔓 Anmelden</button>
+                    <button type="button" id="schaltflaeche-zu-aktivierung" style="background: transparent; border: none; cursor: pointer; font-size: 0.85rem; width: 100%; padding: 6px; color: #0D9488;">⚙️ Erstinbetriebnahme: Gerät mit Aktivierungsschlüssel einrichten</button>
                 </div>
 
-                <!-- STEP 1: Code-Eingabe (Nur für die allererste Einrichtung auf einem neuen Gerät) -->
                 <div id="auth-schritt-code" class="auth-karte ausblenden">
                     <h2>Gerät einrichten</h2>
                     <p class="auth-hinweis">Bitte gib den Aktivierungsschlüssel der Filiale ein, um dieses Gerät zu registrieren.</p>
@@ -343,120 +218,25 @@
                         <label for="eingabe-aktivierungsschluessel">Aktivierungsschlüssel</label>
                         <input type="text" id="eingabe-aktivierungsschluessel" placeholder="z. B. KIK-1234-5678-9012" autocomplete="off">
                     </div>
-                    <button type="button" id="schaltflaeche-aktivieren" class="schaltflaeche-primaer" style="margin-bottom: 12px;">
-                        🔑 Schlüssel Prüfen
-                    </button>
-                    <button type="button" id="schaltflaeche-zu-login" style="background: transparent; border: none; cursor: pointer; font-size: 0.85rem; width: 100%; padding: 6px; color: #0D9488;">
-                        ⬅️ Zurück zum Schnell-Login
-                    </button>
+                    <button type="button" id="schaltflaeche-aktivieren" class="schaltflaeche-primaer" style="margin-bottom: 12px;">🔑 Schlüssel Prüfen</button>
+                    <button type="button" id="schaltflaeche-zu-login" style="background: transparent; border: none; cursor: pointer; font-size: 0.85rem; width: 100%; padding: 6px; color: #0D9488;">⬅️ Zurück zum Schnell-Login</button>
                 </div>
 
-                <!-- STEP 2A: Registrierung für Teamleiter -->
-                <form id="auth-schritt-tl-registrierung" class="auth-karte ausblenden" onsubmit="return false;">
-                    <h2>Filiale einrichten</h2>
-                    <p class="auth-hinweis">Teamleiter-Key erkannt. Bitte trage deine Filial- und Kontaktdaten ein.</p>
-                    
-                    <div class="formular-gruppe">
-                        <label for="tl-reg-filialname">Filialnummer & Standort</label>
-                        <input type="text" id="tl-reg-filialname" placeholder="z. B. 2053 Dietmannsried">
-                    </div>
-                    <div class="formular-gruppe">
-                        <label for="tl-reg-name">Dein vollständiger Name</label>
-                        <input type="text" id="tl-reg-name" placeholder="z. B. Max Mustermann">
-                    </div>
-                    <div class="formular-gruppe">
-                        <label for="tl-reg-persnr">Personalnummer</label>
-                        <input type="text" id="tl-reg-persnr" placeholder="z. B. 859042" maxlength="6">
-                    </div>
-                    <div class="formular-gruppe">
-                        <label for="tl-reg-pin">Deine PIN (4-stellig)</label>
-                        <input type="password" id="tl-reg-pin" placeholder="z. B. 1234" maxlength="4">
-                    </div>
-
-                    <button type="button" id="schaltflaeche-tl-registrieren" class="schaltflaeche-gruen">
-                        💾 Filiale registrieren & Starten
-                    </button>
-                </form>
-
-                <!-- STEP 2B: Registrierung für Bezirksleitung -->
-                <form id="auth-schritt-bl-registrierung" class="auth-karte ausblenden" onsubmit="return false;">
-                    <h2>Bezirk einrichten</h2>
-                    <p class="auth-hinweis">Bezirksleitungs-Key erkannt. Bitte trage deine Daten und deine persönliche PIN ein.</p>
-                    
-                    <div class="formular-gruppe">
-                        <label for="bl-reg-name">Dein vollständiger Name</label>
-                        <input type="text" id="bl-reg-name" placeholder="z. B. Anna Schmidt">
-                    </div>
-                    <div class="formular-gruppe">
-                        <label for="bl-reg-persnr">Personalnummer</label>
-                        <input type="text" id="bl-reg-persnr" placeholder="z. B. 4012" maxlength="6">
-                    </div>
-                    <div class="formular-gruppe">
-                        <label for="bl-reg-pin">Deine PIN (4-stellig)</label>
-                        <input type="password" id="bl-reg-pin" placeholder="z. B. 5678" maxlength="4">
-                    </div>
-
-                    <button type="button" id="schaltflaeche-bl-registrieren" class="schaltflaeche-gruen">
-                        💾 Bezirk registrieren & Starten
-                    </button>
-                </form>
-
-                <!-- STEP 2C: Registrierung für Mitarbeiter -->
-                <form id="auth-schritt-ma-registrierung" class="auth-karte ausblenden" onsubmit="return false;">
-                    <h2>Mitarbeiter-Profil einrichten</h2>
-                    <p class="auth-hinweis">Mitarbeiter-Key erkannt. Bitte trage deine Daten ein.</p>
-                    
-                    <div class="formular-gruppe">
-                        <label for="ma-reg-name">Dein vollständiger Name</label>
-                        <input type="text" id="ma-reg-name" placeholder="z. B. Maria Müller">
-                    </div>
-                    <div class="formular-gruppe">
-                        <label for="ma-reg-persnr">Personalnummer (6-stellig)</label>
-                        <input type="text" id="ma-reg-persnr" placeholder="z. B. 123456" maxlength="6">
-                    </div>
-                    <div class="formular-gruppe">
-                        <label for="ma-reg-pin">PIN (4-stellig)</label>
-                        <input type="password" id="ma-reg-pin" placeholder="z. B. 1234" maxlength="4">
-                    </div>
-
-                    <button type="button" id="schaltflaeche-ma-registrieren" class="schaltflaeche-gruen">
-                        💾 Registrieren & Starten
-                    </button>
-                </form>
-
+                <form id="auth-schritt-tl-registrierung" class="auth-karte ausblenden" onsubmit="return false;"></form>
+                <form id="auth-schritt-bl-registrierung" class="auth-karte ausblenden" onsubmit="return false;"></form>
+                <form id="auth-schritt-ma-registrierung" class="auth-karte ausblenden" onsubmit="return false;"></form>
             </div>
-
         </main>
 
-        <!-- Untere Navigationsleiste -->
         <nav id="fuss-navigation">
-            <button class="nav-schaltflaeche aktiv" data-ziel="ansicht-startseite">
-                <span class="nav-symbol">🏠</span>
-                <span>Übersicht</span>
-            </button>
-            <button class="nav-schaltflaeche" data-ziel="ansicht-suche">
-                <span class="nav-symbol">🔍</span>
-                <span>Artikelliste</span>
-            </button>
-            <button class="nav-schaltflaeche" data-ziel="ansicht-profil">
-                <span class="nav-symbol">👤</span>
-                <span>Profil</span>
-            </button>
-            <!-- Teamleiter-Team-Button -->
-            <button class="nav-schaltflaeche ausblenden" data-ziel="ansicht-tl-mitarbeiter" id="nav-btn-tl-team">
-                <span class="nav-symbol">👥</span>
-                <span>Team</span>
-            </button>
-            <!-- Admin-Button -->
-            <button class="nav-schaltflaeche ausblenden" data-ziel="ansicht-admin-dashboard" id="nav-btn-admin">
-                <span class="nav-symbol">👑</span>
-                <span>Admin</span>
-            </button>
+            <button class="nav-schaltflaeche aktiv" data-ziel="ansicht-startseite"><span class="nav-symbol">🏠</span><span>Übersicht</span></button>
+            <button class="nav-schaltflaeche" data-ziel="ansicht-suche"><span class="nav-symbol">🔍</span><span>Artikelliste</span></button>
+            <button class="nav-schaltflaeche" data-ziel="ansicht-profil"><span class="nav-symbol">👤</span><span>Profil</span></button>
+            <button class="nav-schaltflaeche ausblenden" data-ziel="ansicht-tl-mitarbeiter" id="nav-btn-tl-team"><span class="nav-symbol">👥</span><span>Team</span></button>
+            <button class="nav-schaltflaeche ausblenden" data-ziel="ansicht-admin-dashboard" id="nav-btn-admin"><span class="nav-symbol">👑</span><span>Admin</span></button>
         </nav>
-
     </div>
 
-    <!-- Splash-Screen Ausblende-Logik (Sanftes Fade-out nach 800ms beim Laden) -->
     <script>
         window.addEventListener('load', () => {
             setTimeout(() => {
@@ -470,8 +250,7 @@
         });
     </script>
 
-    <!-- JavaScript-Dateien -->
-	<script src="js/globale-modals.js"></script>
+    <script src="js/globale-modals.js"></script>
     <script src="js/datenbank-verbindung.js"></script>
     <script src="js/benutzer-verwaltung.js"></script>
     <script src="js/scanner-logik.js"></script>
@@ -483,7 +262,7 @@
     <script src="js/admin-dashboard.js"></script>
 	<script src="js/bezirksleitung-dashboard.js"></script>
 
-    <!-- Service-Worker Registrierung -->
+    <!-- Service-Worker & Tab-Wechsel Auto-Refresh Trigger -->
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('service-worker.js')
