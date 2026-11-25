@@ -99,7 +99,7 @@ body {
     color: #0F172A !important;
 }
 
-/* --- UNTERE NAVIGATION (Sauber & Klickbar) --- */
+/* --- UNTERE NAVIGATION --- */
 #fuss-navigation {
     flex-shrink: 0;
     height: 64px;
@@ -184,25 +184,28 @@ body {
     box-shadow: 0 4px 12px rgba(13, 148, 136, 0.04);
 }
 
-/* --- FORMULARE & INPUTS --- */
+/* --- FORMULARE & INPUTS (Volle Breite, sauberes Design) --- */
 input[type="text"],
+input[type="search"],
 input[type="date"],
 input[type="number"],
 input[type="password"],
 select {
-    width: 100%;
-    padding: 12px 14px;
-    font-size: 0.95rem;
-    border: 1px solid #CBD5E1;
-    border-radius: 8px;
-    background-color: #FFFFFF;
-    color: #0F172A;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 12px 14px !important;
+    font-size: 1rem !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 8px !important;
+    background-color: #F8FAFC !important;
+    color: #0F172A !important;
     outline: none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 input:focus, select:focus {
-    border-color: #0D9488;
-    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+    border-color: #0D9488 !important;
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15) !important;
+    background-color: #FFFFFF !important;
 }
 
 /* --- NORMALE BUTTONS --- */
@@ -250,69 +253,3 @@ button:active {
 .schaltflaeche-gruen:hover {
     background-color: #059669 !important;
 }
-
-/* --- PROFIL KOPFKARTE --- */
-.profil-kopfkarte {
-    background: linear-gradient(135deg, #0F766E 0%, #0D9488 100%) !important;
-    color: #FFFFFF !important;
-    border-radius: 16px;
-    padding: 24px 20px;
-    text-align: center;
-    box-shadow: 0 8px 20px rgba(13, 148, 136, 0.25);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-}
-
-.profil-avatar-kreis {
-    width: 60px;
-    height: 60px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.6rem;
-    border: 2px solid rgba(255, 255, 255, 0.4);
-}
-
-.profil-rolle-badge {
-    background: #FBBF24 !important;
-    color: #0F172A !important;
-    padding: 4px 14px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-}
-
-.profil-stat-wert {
-    font-size: 1.7rem;
-    font-weight: 700;
-    color: #0D9488 !important;
-}
-.profil-stat-wert.gruen {
-    color: #10B981 !important;
-}
-
-.btn-profil-gefahr {
-    width: 100%;
-    min-height: 48px;
-    background-color: #EF4444 !important;
-    color: #FFFFFF !important;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-}
-.btn-profil-gefahr:hover {
-    background-color: #DC2626 !important;
-}
-
