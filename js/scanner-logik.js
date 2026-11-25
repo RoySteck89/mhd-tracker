@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SCANNER-, SPEICHER- & LIVE-ARTIKEL-LOGIK (INKL. DATUMS-FORMATIERUNG)
+   SCANNER-, SPEICHER- & LIVE-ARTIKEL-LOGIK (KORRIGIERT)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -22,10 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Felder gegen Passwort-Manager / Browser-Autofill absichern
+    // Felder absolut strikt gegen Browser-Autofill und Passwort-Manager absichern
     [barcodeInput, artikelNameInput, mhdInput].forEach(el => {
         if (el) {
-            el.setAttribute('autocomplete', 'off');
+            el.setAttribute('autocomplete', 'new-password');
             el.setAttribute('autocapitalize', 'off');
             el.setAttribute('spellcheck', 'false');
             el.setAttribute('data-lpignore', 'true');
@@ -62,17 +62,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // MHD-Formatierung TT.MM.JJ während der Eingabe
+    // MHD-Formatierung TT.MM.JJ während der Eingabe (Kein Überschreiben mit heutigem Datum!)
     if (mhdInput) {
         mhdInput.setAttribute('inputmode', 'numeric');
         mhdInput.setAttribute('maxlength', '8');
 
-        // Heutiges Datum als TT.MM.JJ vorbesetzen
-        const heute = new Date();
-        const tag = String(heute.getDate()).padStart(2, '0');
-        const monat = String(heute.getMonth() + 1).padStart(2, '0');
-        const jahr = String(heute.getFullYear()).slice(-2);
-        mhdInput.value = `${tag}.${monat}.${jahr}`;
+        // Feld beim Start bewusst leer lassen, damit man das echte MHD der Packung tippen muss
+        if (!mhdInput.value) {
+            mhdInput.value = '';
+        }
 
         mhdInput.addEventListener('input', (e) => {
             let wert = e.target.value.replace(/\D/g, '');
@@ -140,7 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const barcodes = await barcodeDetector.detect(videoElement);
                     if (barcodes.length > 0) {
                         const erfassterCode = barcodes[0].rawValue.trim();
-                        // Erlaubt jetzt bis zu 25 Stellen (für die 20-stelligen KiK-Codes)
                         if (erfassterCode.length >= 8 && erfassterCode.length <= 25 && /^\d+$/.test(erfassterCode)) {
                             if (barcodeInput) {
                                 barcodeInput.value = erfassterCode;
@@ -166,7 +163,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Hilfsfunktion: Prüft, ob Tag, Monat und Jahr kalendarisch existieren (verhindert Supabase "out of range")
     function istGueltigesKalenderdatum(tagStr, monatStr, jahrStr) {
         const tag = parseInt(tagStr, 10);
         const monat = parseInt(monatStr, 10);
@@ -211,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // ROBUSTE DATUMS-UMWANDLUNG & KALENDERPRÜFUNG
+            // Exakte Konvertierung von TT.MM.JJ zu JJJJ-MM-TT ohne automatische Fehlinterpretation
             let mhdDatum = mhdRoh;
             if (mhdRoh.includes('.')) {
                 const teile = mhdRoh.split('.');
@@ -327,6 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (barcodeInput) barcodeInput.value = '';
             if (artikelNameInput) artikelNameInput.value = '';
+            if (mhdInput) mhdInput.value = ''; // Feld leeren für den nächsten Scan
             
             aktiveFilialArtikelLaden();
 
@@ -369,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return heute >= vorlaufDatum;
             });
 
-            if (relevanteEintraege.length === 0) {
+            if (relevanteEintrage.length === 0) {
                 aktiveArtikelBehaelter.innerHTML = '<div class="liste-karte" style="justify-content: center; color: #6C757D;">Keine Artikel im Reduzierungs-Zeitraum (1 Monat Vorlauf).</div>';
                 return;
             }
