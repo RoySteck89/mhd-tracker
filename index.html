@@ -88,24 +88,30 @@
                         </button>
                     </div>
                     
-                    <div id="mhd-erfassungs-bereich" class="erfassungs-karte">
+                    <div id="mhd-erfassungs-bereich" class="erfassungs-karte" data-form-type="other">
                         <div class="bereichs-titel">Neuen MHD-Eintrag erfassen</div>
         
                         <div class="formular-gruppe">
 							<label for="eingabe-barcode">Barcode / EAN</label>
-							<input type="text" id="eingabe-barcode" placeholder="Barcode scannen oder eingeben..." autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" inputmode="numeric">
+							<input type="text" id="eingabe-barcode" name="scan_barcode_code" placeholder="Barcode scannen oder eingeben..." autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" inputmode="numeric">
 						</div>
 
-                        <!-- Kategorie-Auswahl & MHD-Erfassung -->
+                        <!-- Artikelname mit Live-Erkennung -->
+                        <div class="formular-gruppe">
+                            <label for="eingabe-artikelname">Artikelname</label>
+                            <input type="text" id="eingabe-artikelname" name="scan_article_title" placeholder="Wird automatisch erkannt oder neu eingegeben..." autocomplete="off" autocapitalize="words" spellcheck="false" data-lpignore="true" data-form-type="other">
+                        </div>
+
+                        <!-- MHD-Erfassung -->
 						<div class="formular-gruppe">
 							<label for="eingabe-mhd">Mindesthaltbarkeitsdatum (MHD)</label>
-							<input type="text" id="eingabe-mhd" placeholder="TT.MM.JJ (z.B. 12.05.27)" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" inputmode="numeric" maxlength="8">
+							<input type="text" id="eingabe-mhd" name="scan_expiry_date" placeholder="TT.MM.JJ (z.B. 12.05.27)" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" inputmode="numeric" maxlength="8">
 						</div>
 
                         <!-- Kategorie-Auswahl bei der Erfassung -->
                         <div class="formular-gruppe">
                             <label for="eingabe-kategorie">Warengruppe / Kategorie</label>
-                            <select id="eingabe-kategorie">
+                            <select id="eingabe-kategorie" autocomplete="off">
                                 <option value="Süßigkeiten">🍫 Süßigkeiten</option>
                                 <option value="Getränke">🥤 Getränke</option>
                                 <option value="Tierfutter">🐾 Tierfutter</option>

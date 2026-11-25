@@ -1,10 +1,12 @@
 /* ==========================================================================
-   SCANNER-, SPEICHER- & FILIAL-ARTIKEL-LOGIK (INKL. DATUMS-FORMATIERUNG TT.MM.JJ)
+   SCANNER-, SPEICHER- & LIVE-ARTIKEL-LOGIK (INKL. DATUMS-FORMATIERUNG)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
     const barcodeInput = document.getElementById('eingabe-barcode');
+    const artikelNameInput = document.getElementById('eingabe-artikelname');
     const mhdInput = document.getElementById('eingabe-mhd');
+    const kategorieSelect = document.getElementById('eingabe-kategorie');
     const speichernButton = document.getElementById('schaltflaeche-mhd-speichern');
     const scanButton = document.getElementById('schaltflaeche-scannen');
     const aktiveArtikelBehaelter = document.getElementById('behälter-aktive-artikel');
@@ -20,45 +22,66 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Felder gegen Passwort-Manager / Browser-Autofill absichern
+    [barcodeInput, artikelNameInput, mhdInput].forEach(el => {
+        if (el) {
+            el.setAttribute('autocomplete', 'off');
+            el.setAttribute('autocapitalize', 'off');
+            el.setAttribute('spellcheck', 'false');
+            el.setAttribute('data-lpignore', 'true');
+            el.setAttribute('data-form-type', 'other');
+        }
+    });
+
     if (barcodeInput) {
-        barcodeInput.setAttribute('autocomplete', 'off');
-        barcodeInput.setAttribute('autocapitalize', 'off');
-        barcodeInput.setAttribute('spellcheck', 'false');
-        barcodeInput.setAttribute('data-lpignore', 'true');
         barcodeInput.setAttribute('inputmode', 'numeric');
+        
+        // LIVE-SUCHE: Sobald Barcode eingegeben oder gescannt wird, in der DB nachschauen
+        barcodeInput.addEventListener('input', async () => {
+            const barcode = barcodeInput.value.trim();
+            if (barcode.length >= 8 && window.supabaseVerbindung && window.supabaseVerbindung.client) {
+                try {
+                    const { data, error } = await window.supabaseVerbindung.client
+                        .from('artikel')
+                        .select('*')
+                        .eq('barcode', barcode)
+                        .limit(1);
+
+                    if (!error && data && data.length > 0) {
+                        if (artikelNameInput) artikelNameInput.value = data[0].artikelname;
+                        if (kategorieSelect && data[0].kategorie) kategorieSelect.value = data[0].kategorie;
+                    } else {
+                        if (artikelNameInput) artikelNameInput.value = '';
+                    }
+                } catch (err) {
+                    console.error('Live-Suche Fehler:', err);
+                }
+            } else {
+                if (artikelNameInput) artikelNameInput.value = '';
+            }
+        });
     }
 
-    // MHD-Eingabe initialisieren (Passwort-Manager blockieren & TT.MM.JJ Format)
+    // MHD-Formatierung TT.MM.JJ während der Eingabe
     if (mhdInput) {
-        mhdInput.setAttribute('autocomplete', 'off');
-        mhdInput.setAttribute('autocapitalize', 'off');
-        mhdInput.setAttribute('spellcheck', 'false');
-        mhdInput.setAttribute('data-lpignore', 'true');
         mhdInput.setAttribute('inputmode', 'numeric');
         mhdInput.setAttribute('maxlength', '8');
 
-        // Heutiges Datum als TT.MM.JJ vorbesetzen (z.B. "23.11.26")
+        // Heutiges Datum als TT.MM.JJ vorbesetzen
         const heute = new Date();
         const tag = String(heute.getDate()).padStart(2, '0');
         const monat = String(heute.getMonth() + 1).padStart(2, '0');
         const jahr = String(heute.getFullYear()).slice(-2);
         mhdInput.value = `${tag}.${monat}.${jahr}`;
 
-        // Automatische Punkt-Formatierung während der Eingabe (z.B. "120527" -> "12.05.27")
         mhdInput.addEventListener('input', (e) => {
             let wert = e.target.value.replace(/\D/g, '');
             if (wert.length > 6) wert = wert.slice(0, 6);
 
             let formatiert = '';
-            if (wert.length > 0) {
-                formatiert = wert.substring(0, 2);
-            }
-            if (wert.length >= 3) {
-                formatiert += '.' + wert.substring(2, 4);
-            }
-            if (wert.length >= 5) {
-                formatiert += '.' + wert.substring(4, 6);
-            }
+            if (wert.length > 0) formatiert = wert.substring(0, 2);
+            if (wert.length >= 3) formatiert += '.' + wert.substring(2, 4);
+            if (wert.length >= 5) formatiert += '.' + wert.substring(4, 6);
             e.target.value = formatiert;
         });
     }
@@ -78,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const manuellerCode = prompt('Dein Browser unterstützt keinen direkten Kamera-Scan. Bitte Barcode manuell eingeben:');
             if (manuellerCode && barcodeInput) {
                 barcodeInput.value = manuellerCode.trim();
+                barcodeInput.dispatchEvent(new Event('input'));
             }
             return;
         }
@@ -103,10 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             mediaStream = await navigator.mediaDevices.getUserMedia({
-                video: { 
-                    facingMode: 'environment',
-                    advanced: [{ focusMode: 'continuous' }]
-                }
+                video: { facingMode: 'environment', advanced: [{ focusMode: 'continuous' }] }
             });
             videoElement.srcObject = mediaStream;
 
@@ -119,8 +140,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     const barcodes = await barcodeDetector.detect(videoElement);
                     if (barcodes.length > 0) {
                         const erfassterCode = barcodes[0].rawValue.trim();
-                        if (erfassterCode.length >= 8 && erfassterCode.length <= 18 && /^\d+$/.test(erfassterCode)) {
-                            if (barcodeInput) barcodeInput.value = erfassterCode;
+                        // Erlaubt jetzt bis zu 25 Stellen (für die 20-stelligen KiK-Codes)
+                        if (erfassterCode.length >= 8 && erfassterCode.length <= 25 && /^\d+$/.test(erfassterCode)) {
+                            if (barcodeInput) {
+                                barcodeInput.value = erfassterCode;
+                                barcodeInput.dispatchEvent(new Event('input'));
+                            }
                             scannerBeenden();
                         }
                     }
@@ -141,44 +166,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function zeigeEigenenPrompt(titel, nachricht, callback) {
-        const altesOverlay = document.getElementById('custom-modal-overlay');
-        if (altesOverlay) altesOverlay.remove();
+    // Hilfsfunktion: Prüft, ob Tag, Monat und Jahr kalendarisch existieren (verhindert Supabase "out of range")
+    function istGueltigesKalenderdatum(tagStr, monatStr, jahrStr) {
+        const tag = parseInt(tagStr, 10);
+        const monat = parseInt(monatStr, 10);
+        const jahr = parseInt(jahrStr, 10);
 
-        const overlay = document.createElement('div');
-        overlay.id = 'custom-modal-overlay';
-        overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;';
-        
-        overlay.innerHTML = `
-            <div style="background: #ffffff; width: 100%; max-width: 380px; padding: 24px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 14px;">
-                <div style="font-weight: 700; font-size: 1.15rem; color: #003366;">${titel}</div>
-                <div style="font-size: 0.95rem; color: #495057; line-height: 1.4;">${nachricht}</div>
-                <input type="text" id="custom-modal-input" placeholder="Artikelbezeichnung eingeben..." autocomplete="off" style="width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 8px; font-size: 1rem; outline: none; background: #f8f9fa;">
-                <div style="display: flex; gap: 10px; margin-top: 6px;">
-                    <button id="custom-modal-abbrechen" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Abbrechen</button>
-                    <button id="custom-modal-ok" style="flex: 1; padding: 12px; background: #28a745; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Speichern</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(overlay);
+        if (monat < 1 || monat > 12 || tag < 1 || tag > 31) return false;
 
-        const input = document.getElementById('custom-modal-input');
-        input.focus();
-
-        document.getElementById('custom-modal-ok').onclick = () => {
-            const wert = input.value.trim();
-            overlay.remove();
-            callback(wert);
-        };
-
-        document.getElementById('custom-modal-abbrechen').onclick = () => {
-            overlay.remove();
-            callback(null);
-        };
-
-        input.onkeydown = (e) => {
-            if (e.key === 'Enter') document.getElementById('custom-modal-ok').click();
-        };
+        const testDatum = new Date(jahr, monat - 1, tag);
+        return (
+            testDatum.getFullYear() === jahr &&
+            testDatum.getMonth() === monat - 1 &&
+            testDatum.getDate() === tag
+        );
     }
 
     if (speichernButton) {
@@ -189,42 +190,63 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const barcode = barcodeInput ? barcodeInput.value.trim() : '';
+            const artikelName = artikelNameInput ? artikelNameInput.value.trim() : '';
             const mhdRoh = mhdInput ? mhdInput.value.trim() : '';
 
             if (!barcode) {
                 alert('Bitte zuerst einen Barcode scannen oder eingeben.');
+                if (barcodeInput) barcodeInput.focus();
+                return;
+            }
+
+            if (!artikelName) {
+                alert('Bitte gib einen Artikelnamen ein.');
+                if (artikelNameInput) artikelNameInput.focus();
                 return;
             }
 
             if (!mhdRoh || mhdRoh.length < 8) {
                 alert('Bitte gib ein gültiges MHD im Format TT.MM.JJ ein.');
+                if (mhdInput) mhdInput.focus();
                 return;
             }
 
-            // Umwandlung von TT.MM.JJ (z.B. "12.05.27") in das Datenbankformat JJJJ-MM-TT ("2027-05-12")
+            // ROBUSTE DATUMS-UMWANDLUNG & KALENDERPRÜFUNG
             let mhdDatum = mhdRoh;
             if (mhdRoh.includes('.')) {
                 const teile = mhdRoh.split('.');
-                if (teile.length === 3 && teile[2].length === 2) {
-                    const tag = teile[0];
-                    const monat = teile[1];
-                    const jahr = '20' + teile[2];
+                if (teile.length === 3) {
+                    const tag = teile[0].padStart(2, '0');
+                    const monat = teile[1].padStart(2, '0');
+                    let jahr = teile[2];
+                    if (jahr.length === 2) jahr = '20' + jahr;
+
+                    if (!istGueltigesKalenderdatum(tag, monat, jahr)) {
+                        alert(`Das Datum "${mhdRoh}" existiert nicht im Kalender. Bitte prüfe Tag und Monat!`);
+                        if (mhdInput) mhdInput.focus();
+                        return;
+                    }
+
                     mhdDatum = `${jahr}-${monat}-${tag}`;
                 }
             }
 
-            await datenInSupabaseSpeichern(barcode, mhdDatum);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(mhdDatum)) {
+                alert('Ungültiges Datumsformat! Bitte im Format TT.MM.JJ eingeben.');
+                return;
+            }
+
+            await datenInSupabaseSpeichern(barcode, artikelName, mhdDatum);
         });
     }
 
-    async function datenInSupabaseSpeichern(barcode, mhdDatum) {
+    async function datenInSupabaseSpeichern(barcode, artikelName, mhdDatum) {
         if (!istAngemeldet()) return;
         if (!window.supabaseVerbindung || !window.supabaseVerbindung.client) {
             alert('Datenbankverbindung nicht bereit.');
             return;
         }
 
-        const kategorieSelect = document.getElementById('eingabe-kategorie');
         const gewaehlteKategorie = kategorieSelect ? kategorieSelect.value : 'Süßigkeiten';
 
         try {
@@ -240,34 +262,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 await window.supabaseVerbindung.client
                     .from('artikel')
-                    .update({ kategorie: gewaehlteKategorie })
+                    .update({ artikelname: artikelName, kategorie: gewaehlteKategorie })
                     .eq('id', artikelId);
-
-                await eintragInSupabaseSpeichern(artikelId, barcode, mhdDatum);
             } else {
-                zeigeEigenenPrompt(
-                    "Neuer Artikel erkannt",
-                    `Der Barcode <code style="font-family: monospace; background: #e9ecef; padding: 2px 4px; border-radius: 4px;">${barcode}</code> ist neu im System. Bitte gib eine Artikelbezeichnung ein:`,
-                    async (artikelName) => {
-                        if (!artikelName || !istAngemeldet()) return;
+                const { data: neuerArtikel, error: insertFehler } = await window.supabaseVerbindung.client
+                    .from('artikel')
+                    .insert([{ 
+                        barcode: barcode, 
+                        artikelname: artikelName, 
+                        kategorie: gewaehlteKategorie 
+                    }])
+                    .select();
 
-                        const { data: neuerArtikel, error: insertFehler } = await window.supabaseVerbindung.client
-                            .from('artikel')
-                            .insert([{ 
-                                barcode: barcode, 
-                                artikelname: artikelName, 
-                                kategorie: gewaehlteKategorie 
-                            }])
-                            .select();
-
-                        if (insertFehler) throw insertFehler;
-                        artikelId = neuerArtikel[0].id;
-                        await eintragInSupabaseSpeichern(artikelId, barcode, mhdDatum);
-                    }
-                );
+                if (insertFehler) throw insertFehler;
+                artikelId = neuerArtikel[0].id;
             }
+
+            await eintragInSupabaseSpeichern(artikelId, barcode, mhdDatum);
+
         } catch (err) {
-            alert('Fehler beim Prüfen des Artikels: ' + err.message);
+            alert('Fehler beim Speichern des Artikels: ' + err.message);
         }
     }
 
@@ -293,7 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const teile = mhdDatum.split('-');
                     if (teile.length === 3) deutschesDatum = `${teile[2]}.${teile[1]}.${teile[0]}`;
                 }
-                alert(`⚠️ DOPPELTER EINTRAG!\n\nDieser Artikel mit dem MHD ${deutschesDatum} wurde in dieser Filiale bereits erfasst und ist aktiv im System.`);
+                alert(`⚠️ DOPPELTER EINTRAG!\n\nDieser Artikel mit dem MHD ${deutschesDatum} wurde in dieser Filiale bereits erfasst und ist aktiv.`);
                 return;
             }
 
@@ -310,7 +324,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mhdFehler) throw mhdFehler;
 
             alert('✅ MHD-Eintrag erfolgreich gespeichert!');
+            
             if (barcodeInput) barcodeInput.value = '';
+            if (artikelNameInput) artikelNameInput.value = '';
             
             aktiveFilialArtikelLaden();
 
@@ -319,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
         } catch (err) {
-            alert('Fehler beim Speichern: ' + err.message);
+            alert('Fehler beim Speichern des MHD-Eintrags: ' + err.message);
         }
     }
 
