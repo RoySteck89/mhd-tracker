@@ -1,13 +1,18 @@
 /* ==========================================================================
-   SCANNER-, SPEICHER- & LIVE-ARTIKEL-LOGIK (PERFEKTIONIERT)
+   SCANNER-, 2-SCHRITT-PRÜFUNG & SPEICHER-LOGIK
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
     const barcodeInput = document.getElementById('eingabe-barcode');
+    const pruefenButton = document.getElementById('schaltflaeche-barcode-pruefen');
+    const pruefStatusBox = document.getElementById('barcode-pruef-status');
+    const schritt2Container = document.getElementById('schritt-2-artikel-details');
+
     const artikelNameInput = document.getElementById('eingabe-artikelname');
     const mhdInput = document.getElementById('eingabe-mhd');
     const kategorieSelect = document.getElementById('eingabe-kategorie');
     const speichernButton = document.getElementById('schaltflaeche-mhd-speichern');
+    const resetButton = document.getElementById('schaltflaeche-erfassung-reset');
     const scanButton = document.getElementById('schaltflaeche-scannen');
     const aktiveArtikelBehaelter = document.getElementById('behälter-aktive-artikel');
 
@@ -22,52 +27,127 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Felder absolut strikt gegen Browser-Autofill / Passwortmanager absichern
+    // Eingabefelder gegen Chrome Passwort-Manager & Autofill absichern
+    // Durch type="search" und readonly-Trick ignoriert Android Chrome die Felder als Login-Formular
     [barcodeInput, artikelNameInput, mhdInput].forEach(el => {
         if (el) {
-            el.setAttribute('autocomplete', 'new-password');
+            el.setAttribute('autocomplete', 'off');
+            el.setAttribute('autocorrect', 'off');
             el.setAttribute('autocapitalize', 'off');
             el.setAttribute('spellcheck', 'false');
             el.setAttribute('data-lpignore', 'true');
-            el.setAttribute('data-form-type', 'other');
+            el.setAttribute('data-1p-ignore', 'true');
+            el.setAttribute('readonly', 'true');
+            el.addEventListener('focus', () => el.removeAttribute('readonly'));
+            el.addEventListener('touchstart', () => el.removeAttribute('readonly'));
         }
     });
 
-    // ZENTRALE LIVE-SUCHE BEI BARCODE-EINGABE ODER SCAN
-    async function sucheBarcodeInDatenbank(barcode) {
-        const saubererBarcode = barcode.trim();
-        if (saubererBarcode.length >= 8 && window.supabaseVerbindung && window.supabaseVerbindung.client) {
-            try {
-                const { data, error } = await window.supabaseVerbindung.client
-                    .from('artikel')
-                    .select('*')
-                    .eq('barcode', saubererBarcode)
-                    .limit(1);
+    if (barcodeInput) {
+        barcodeInput.setAttribute('inputmode', 'numeric');
+        // Wenn der Barcode nachträglich geändert wird, Schritt 2 wieder einklappen bis erneut geprüft wurde
+        barcodeInput.addEventListener('input', () => {
+            if (schritt2Container) schritt2Container.classList.add('ausblenden');
+            if (pruefStatusBox) pruefStatusBox.classList.add('ausblenden');
+        });
+    }
 
-                if (!error && data && data.length > 0) {
-                    if (artikelNameInput) artikelNameInput.value = data[0].artikelname;
-                    if (kategorieSelect && data[0].kategorie) kategorieSelect.value = data[0].kategorie;
-                } else {
-                    if (artikelNameInput) artikelNameInput.value = ''; // Neuer Artikel -> Name bleibt frei zum Eintippen
+    // SCHRITT 1 -> SCHRITT 2: BARCODE GEGEN DATENBANK PRÜFEN
+    async function barcodePruefenUndOeffnen() {
+        if (!istAngemeldet()) {
+            alert('Zugriff verweigert: Bitte zuerst anmelden.');
+            return;
+        }
+
+        const barcode = barcodeInput ? barcodeInput.value.trim() : '';
+        if (!barcode || barcode.length < 4) {
+            alert('Bitte zuerst einen gültigen Barcode scannen oder eingeben.');
+            if (barcodeInput) barcodeInput.focus();
+            return;
+        }
+
+        if (!window.supabaseVerbindung || !window.supabaseVerbindung.client) {
+            alert('Datenbankverbindung nicht bereit.');
+            return;
+        }
+
+        // Ladeanzeige auf dem Button
+        const originalText = pruefenButton ? pruefenButton.innerHTML : '';
+        if (pruefenButton) {
+            pruefenButton.disabled = true;
+            pruefenButton.innerHTML = '⏳ Prüfe Datenbank...';
+        }
+
+        try {
+            const { data, error } = await window.supabaseVerbindung.client
+                .from('artikel')
+                .select('*')
+                .eq('barcode', barcode)
+                .limit(1);
+
+            if (error) throw error;
+
+            // Schritt 2 einblenden
+            if (schritt2Container) schritt2Container.classList.remove('ausblenden');
+            if (pruefStatusBox) pruefStatusBox.classList.remove('ausblenden');
+
+            if (data && data.length > 0) {
+                // ARTIKEL BEREITS VORHANDEN
+                const artikel = data[0];
+                if (pruefStatusBox) {
+                    pruefStatusBox.style.background = '#D1FAE5';
+                    pruefStatusBox.style.color = '#065F46';
+                    pruefStatusBox.style.border = '1px solid #34D399';
+                    pruefStatusBox.innerHTML = `✅ Artikel bekannt: <strong>${artikel.artikelname}</strong><br><span style="font-weight:400; font-size:0.82rem;">Bitte nur noch das MHD eintragen.</span>`;
                 }
-            } catch (err) {
-                console.error('Live-Suche Fehler:', err);
+                if (artikelNameInput) artikelNameInput.value = artikel.artikelname;
+                if (kategorieSelect && artikel.kategorie) kategorieSelect.value = artikel.kategorie;
+                
+                // Fokus direkt ins MHD-Feld setzen
+                if (mhdInput) {
+                    mhdInput.removeAttribute('readonly');
+                    mhdInput.focus();
+                }
+            } else {
+                // ARTIKEL IST NEU
+                if (pruefStatusBox) {
+                    pruefStatusBox.style.background = '#E0F2FE';
+                    pruefStatusBox.style.color = '#075985';
+                    pruefStatusBox.style.border = '1px solid #38BDF8';
+                    pruefStatusBox.innerHTML = `🆕 Neuer Artikel im System<br><span style="font-weight:400; font-size:0.82rem;">Bitte Artikelname und MHD eintragen.</span>`;
+                }
+                if (artikelNameInput) {
+                    artikelNameInput.value = '';
+                    artikelNameInput.removeAttribute('readonly');
+                    artikelNameInput.focus();
+                }
             }
-        } else {
-            if (artikelNameInput) artikelNameInput.value = '';
+
+        } catch (err) {
+            alert('Fehler bei der Barcode-Prüfung: ' + err.message);
+        } finally {
+            if (pruefenButton) {
+                pruefenButton.disabled = false;
+                pruefenButton.innerHTML = originalText;
+            }
         }
     }
 
-    if (barcodeInput) {
-        barcodeInput.setAttribute('inputmode', 'numeric');
-        
-        // Lauscht auf jede Eingabe oder automatisches Einfügen
-        barcodeInput.addEventListener('input', () => {
-            sucheBarcodeInDatenbank(barcodeInput.value);
-        });
-        barcodeInput.addEventListener('change', () => {
-            sucheBarcodeInDatenbank(barcodeInput.value);
-        });
+    if (pruefenButton) {
+        pruefenButton.addEventListener('click', barcodePruefenUndOeffnen);
+    }
+
+    // Formular komplett zurücksetzen für den nächsten Artikel
+    function erfassungZuruecksetzen() {
+        if (barcodeInput) barcodeInput.value = '';
+        if (artikelNameInput) artikelNameInput.value = '';
+        if (mhdInput) mhdInput.value = '';
+        if (pruefStatusBox) pruefStatusBox.classList.add('ausblenden');
+        if (schritt2Container) schritt2Container.classList.add('ausblenden');
+    }
+
+    if (resetButton) {
+        resetButton.addEventListener('click', erfassungZuruecksetzen);
     }
 
     // MHD-Formatierung TT.MM.JJ während der Eingabe
@@ -102,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const manuellerCode = prompt('Dein Browser unterstützt keinen direkten Kamera-Scan. Bitte Barcode manuell eingeben:');
             if (manuellerCode && barcodeInput) {
                 barcodeInput.value = manuellerCode.trim();
-                sucheBarcodeInDatenbank(barcodeInput.value);
+                await barcodePruefenUndOeffnen();
             }
             return;
         }
@@ -142,11 +222,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (barcodes.length > 0) {
                         const erfassterCode = barcodes[0].rawValue.trim();
                         if (erfassterCode.length >= 8 && erfassterCode.length <= 25 && /^\d+$/.test(erfassterCode)) {
+                            scannerBeenden();
                             if (barcodeInput) {
                                 barcodeInput.value = erfassterCode;
-                                sucheBarcodeInDatenbank(erfassterCode);
+                                // Nach dem Scan automatisch gegen die Datenbank prüfen und Schritt 2 öffnen!
+                                await barcodePruefenUndOeffnen();
                             }
-                            scannerBeenden();
                         }
                     }
                 } catch (err) {}
@@ -323,9 +404,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             alert('✅ MHD-Eintrag erfolgreich gespeichert!');
             
-            if (barcodeInput) barcodeInput.value = '';
-            if (artikelNameInput) artikelNameInput.value = '';
-            if (mhdInput) mhdInput.value = '';
+            // Nach dem Speichern alles wieder sauber auf Schritt 1 zurücksetzen
+            erfassungZuruecksetzen();
             
             aktiveFilialArtikelLaden();
 
@@ -374,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             aktiveArtikelBehaelter.innerHTML = '';
-            relevanteEintrage.forEach(item => {
+            relevanteEintraege.forEach(item => {
                 const artikelName = item.artikel ? item.artikel.artikelname : `Barcode: ${item.barcode}`;
                 
                 let deutschesDatum = item.mhd_datum;
@@ -428,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.aktiveFilialArtikelLaden = aktiveFilialArtikelLaden;
 
-    // AUTOMATISCHES NEULADEN BEI TAB-WECHSEL (Behebt das Problem, dass sich Ansichten nicht aktualisieren)
+    // Auto-Refresh beim Tab-Wechsel unten in der Navigation
     document.querySelectorAll('.nav-schaltflaeche').forEach(btn => {
         btn.addEventListener('click', () => {
             setTimeout(() => {
